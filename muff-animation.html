@@ -1,0 +1,96 @@
+<style>
+.muff-wrapper { position: relative; max-width: 680px; }
+.muff-fallback { display: block; background: #13131a; border-radius: 10px; padding: 40px 24px; color: #888; font-family: sans-serif; font-size: 13px; line-height: 1.6; text-align: center; }
+.muff-canvas  { display: none; border-radius: 10px; background: #13131a; width: 100%; max-width: 680px; }
+.muff-controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 10px; font-family: sans-serif; }
+.muff-ctrl { display: flex; flex-direction: column; gap: 4px; }
+.muff-ctrl-header { display: flex; justify-content: space-between; }
+.muff-ctrl-header span { font-size: 12px; color: #888; }
+.muff-data-box { margin-top: 8px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-family: sans-serif; }
+.muff-data-title { font-size: 11px; color: #777; margin-bottom: 4px; font-weight: 500; }
+.muff-data-items { display: flex; gap: 16px; flex-wrap: wrap; }
+.muff-data-items span { font-size: 11px; color: #666; }
+</style>
+
+<div id="muff-wrapper" class="muff-wrapper">
+  <div id="muff-fallback" class="muff-fallback">
+    How an exhaust heat muff works — cold ram air enters the shroud around the hot exhaust pipe, picks up heat, and exits through a butterfly valve into the cabin.
+    <br><small style="opacity:0.5">Interactive animation loading&hellip;</small>
+  </div>
+  <canvas id="muff-cv" width="680" height="330" class="muff-canvas"></canvas>
+</div>
+
+<div class="muff-controls">
+  <div class="muff-ctrl">
+    <div class="muff-ctrl-header"><span>Altitude</span><span id="muff-alt-label">Sea level</span></div>
+    <input type="range" id="muff-alt" min="0" max="15000" step="500" value="0">
+  </div>
+  <div class="muff-ctrl">
+    <div class="muff-ctrl-header"><span>Airspeed</span><span id="muff-spd-label">120 kt</span></div>
+    <input type="range" id="muff-spd" min="60" max="180" step="10" value="120">
+  </div>
+  <div class="muff-ctrl">
+    <div class="muff-ctrl-header"><span>Valve opening</span><span id="muff-valve-label">100%</span></div>
+    <input type="range" id="muff-valve" min="0" max="100" step="5" value="100">
+  </div>
+</div>
+
+<div class="muff-data-box">
+  <div class="muff-data-title">Data sources used for calibration</div>
+  <div class="muff-data-items">
+    <span>&#128205; <strong>Bonanza / exhaust muff</strong> &#8212; 0&#xb0;F OAT &#8594; 30&#xb0;F floor (Aviation Consumer)</span>
+    <span>&#128205; <strong>Titan Tornado / Jabiru</strong> &#8212; 30&#xb0;F OAT &#8594; 60&#xb0;F cabin (pilot report)</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  function startAnimation(cv){
+    cv.width=680; cv.height=330;
+    var fb=document.getElementById('muff-fallback');
+    if(fb) fb.style.display='none';
+    cv.style.display='block';
+    var cx=cv.getContext('2d'),W=680,H=330;
+    var S={x:82,y:52,w:342,h:164},P={x:82,y:114,w:342,h:54};
+    var VCX=453,VCY=S.y+S.h/2,CAB={x:476,y:40,w:162,h:218};
+    var alt=0,spd=120,vPct=100,fr=0,pts=[],tpts=[];
+    function oat(a){return Math.round(15-a/1000*2-10);}
+    function cabinTemp(a,s,v){var ot=oat(a),af=Math.max(0.1,1-a/28000),sf=0.78+0.22*(s/120);return Math.round(ot+5+13*af*sf*(v/100));}
+    function getNote(a,v){var ct=cabinTemp(a,spd,v);if(a>=9500&&a<=10500&&v>=95)return{text:'FL100 winter: ~'+ct+'\xb0C \u2014 jacket required',col:'rgba(130,175,235,0.9)'};if(a>=14500&&v>=95)return{text:'FL150: near or below freezing',col:'rgba(120,160,230,0.9)'};return null;}
+    function cabinBg(t){var st=[{t:-15,r:6,g:10,b:48},{t:-5,r:10,g:20,b:72},{t:5,r:14,g:35,b:88},{t:13,r:18,g:55,b:82},{t:20,r:20,g:78,b:65},{t:27,r:75,g:62,b:18}];for(var i=0;i<st.length-1;i++){if(t>=st[i].t&&t<=st[i+1].t){var f=(t-st[i].t)/(st[i+1].t-st[i].t);return'rgb('+Math.round(st[i].r+f*(st[i+1].r-st[i].r))+','+Math.round(st[i].g+f*(st[i+1].g-st[i].g))+','+Math.round(st[i].b+f*(st[i+1].b-st[i].b))+')';}}return t<st[0].t?'rgb(4,8,40)':'rgb(75,62,18)';}
+    function mp(rand){var top=Math.random()>.5,p={x:S.x+(rand?Math.random()*S.w:0),vx:.9+Math.random()*.5,vy:(Math.random()-.5)*.35,sz:1.8+Math.random()*2};if(top){var ch=P.y-S.y;p.y=S.y+3+Math.random()*(ch-6);p.cy=S.y+ch/2;p.mn=S.y+2;p.mx=P.y-2;}else{var ch2=(S.y+S.h)-(P.y+P.h);p.y=P.y+P.h+3+Math.random()*(ch2-6);p.cy=P.y+P.h+ch2/2;p.mn=P.y+P.h+2;p.mx=S.y+S.h-2;}return p;}
+    function mkTpt(){var top=Math.random()>.5,cy1=S.y+(P.y-S.y)/2,cy2=P.y+P.h+(S.y+S.h-P.y-P.h)/2;return{x:S.x+S.w,y:(top?cy1:cy2)+(Math.random()-.5)*18,vx:1.2+Math.random()*.6,sz:1.5+Math.random()*1.5};}
+    for(var i=0;i<200;i++)pts.push(mp(true));
+    function pcol(x,a){var w=(x-S.x)/S.w*Math.max(.25,1-a/17000);return'rgb('+Math.round(30+w*215)+','+Math.round(130+w*(100-130))+','+Math.round(215-w*185)+')';}
+    function rrp(x,y,w,h,r){cx.beginPath();cx.moveTo(x+r,y);cx.lineTo(x+w-r,y);cx.quadraticCurveTo(x+w,y,x+w,y+r);cx.lineTo(x+w,y+h-r);cx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);cx.lineTo(x+r,y+h);cx.quadraticCurveTo(x,y+h,x,y+h-r);cx.lineTo(x,y+r);cx.quadraticCurveTo(x,y,x+r,y);cx.closePath();}
+    function drawStructure(){cx.fillStyle='rgba(25,28,42,0.98)';rrp(S.x,S.y,S.w,S.h,9);cx.fill();var pulse=0.5+0.18*Math.sin(fr*.04);for(var gi=16;gi>0;gi--){cx.fillStyle='rgba(200,70,15,'+(pulse*.06*(1-gi/16))+')';cx.fillRect(P.x,P.y-gi,P.w,gi);cx.fillRect(P.x,P.y+P.h,P.w,gi);}cx.fillStyle='#6b1e00';cx.fillRect(P.x,P.y,P.w,P.h);cx.fillStyle='rgba(210,65,15,'+(0.85+0.15*pulse)+')';cx.fillRect(P.x+2,P.y+6,P.w-4,P.h-12);cx.fillStyle='rgba(255,135,45,'+(0.7*pulse)+')';cx.fillRect(P.x+6,P.y+15,P.w-12,P.h-30);cx.strokeStyle='rgba(160,55,8,0.8)';cx.lineWidth=1;cx.strokeRect(P.x,P.y,P.w,P.h);cx.fillStyle='rgba(255,215,170,0.88)';cx.font='bold 11px sans-serif';cx.textAlign='center';cx.textBaseline='middle';cx.fillText('EXHAUST PIPE  ~1300\xb0F',P.x+P.w/2,P.y+P.h/2);cx.save();cx.strokeStyle='rgba(255,120,40,0.22)';cx.lineWidth=0.8;var t0=fr*.055;for(var xi=P.x+18;xi<P.x+P.w-18;xi+=38){var ph=(xi*.09+t0)%(Math.PI*2);cx.beginPath();for(var dy=0;dy<13;dy++){var xp=xi+Math.sin(dy*.55+ph)*3,yp=P.y-1-dy;dy===0?cx.moveTo(xp,yp):cx.lineTo(xp,yp);}cx.stroke();cx.beginPath();for(var dy2=0;dy2<13;dy2++){var xp2=xi+Math.sin(dy2*.55+ph)*3,yp2=P.y+P.h+1+dy2;dy2===0?cx.moveTo(xp2,yp2):cx.lineTo(xp2,yp2);}cx.stroke();}cx.restore();cx.strokeStyle='rgba(68,78,105,0.9)';cx.lineWidth=1.5;rrp(S.x,S.y,S.w,S.h,9);cx.stroke();cx.font='10px sans-serif';cx.textAlign='center';cx.textBaseline='bottom';cx.fillStyle='rgba(75,85,115,0.7)';cx.fillText('sheet metal shroud',S.x+S.w/2,S.y-4);}
+    function drawValve(){var angle=(1-vPct/100)*Math.PI/2,open=vPct>5;cx.strokeStyle='rgba(60,70,100,0.6)';cx.lineWidth=1;cx.beginPath();cx.moveTo(S.x+S.w,S.y);cx.lineTo(CAB.x-2,S.y);cx.stroke();cx.beginPath();cx.moveTo(S.x+S.w,S.y+S.h);cx.lineTo(CAB.x-2,S.y+S.h);cx.stroke();var bladeR=S.h/2*.85;cx.save();cx.translate(VCX,VCY);cx.strokeStyle=open?'rgba(70,80,115,0.5)':'rgba(200,90,90,0.4)';cx.lineWidth=1;cx.beginPath();cx.arc(0,0,bladeR+4,0,Math.PI*2);cx.stroke();if(open&&vPct<98){cx.fillStyle='rgba(220,140,50,'+(vPct/100*.4)+')';cx.beginPath();cx.arc(0,0,bladeR,0,Math.PI*2);cx.fill();}cx.rotate(angle);var bw=bladeR*.98,bt=10,grd=cx.createLinearGradient(-bw,0,bw,0);if(open){grd.addColorStop(0,'rgba(190,130,50,0.85)');grd.addColorStop(.5,'rgba(230,160,70,0.95)');grd.addColorStop(1,'rgba(190,130,50,0.85)');}else{grd.addColorStop(0,'rgba(200,80,80,0.85)');grd.addColorStop(.5,'rgba(230,100,100,0.95)');grd.addColorStop(1,'rgba(200,80,80,0.85)');}cx.fillStyle=grd;cx.beginPath();cx.moveTo(-bw,-bt/2);cx.lineTo(bw,-bt/2);cx.quadraticCurveTo(bw+3,-bt/2,bw+3,0);cx.quadraticCurveTo(bw+3,bt/2,bw,bt/2);cx.lineTo(-bw,bt/2);cx.quadraticCurveTo(-bw-3,bt/2,-bw-3,0);cx.quadraticCurveTo(-bw-3,-bt/2,-bw,-bt/2);cx.closePath();cx.fill();cx.fillStyle='rgba(200,210,220,0.9)';cx.beginPath();cx.arc(0,0,4,0,Math.PI*2);cx.fill();cx.fillStyle='rgba(20,22,30,0.8)';cx.beginPath();cx.arc(0,0,2,0,Math.PI*2);cx.fill();cx.restore();cx.font='10px sans-serif';cx.textAlign='center';cx.textBaseline='top';cx.fillStyle=open?'rgba(180,140,60,0.75)':'rgba(190,90,90,0.75)';cx.fillText(Math.round(vPct)+'% open',VCX,S.y+S.h+6);}
+    function drawCabin(){var ct=cabinTemp(alt,spd,vPct);cx.fillStyle=cabinBg(ct);rrp(CAB.x,CAB.y,CAB.w,CAB.h,10);cx.fill();if(vPct>5){var wa=Math.min(.35,vPct/100*.38),cy1=S.y+(P.y-S.y)/2,cy2=P.y+P.h+(S.y+S.h-P.y-P.h)/2;cx.fillStyle='rgba(220,140,50,'+wa+')';cx.beginPath();cx.moveTo(CAB.x,cy1-18*(vPct/100));cx.lineTo(CAB.x,cy1+18*(vPct/100));cx.lineTo(CAB.x+40,cy1+12*(vPct/100));cx.lineTo(CAB.x+40,cy1-12*(vPct/100));cx.closePath();cx.fill();cx.beginPath();cx.moveTo(CAB.x,cy2-14*(vPct/100));cx.lineTo(CAB.x,cy2+14*(vPct/100));cx.lineTo(CAB.x+40,cy2+10*(vPct/100));cx.lineTo(CAB.x+40,cy2-10*(vPct/100));cx.closePath();cx.fill();}cx.strokeStyle='rgba(80,95,130,0.6)';cx.lineWidth=1.5;rrp(CAB.x,CAB.y,CAB.w,CAB.h,10);cx.stroke();cx.font='bold 11px sans-serif';cx.textAlign='center';cx.textBaseline='top';cx.fillStyle='rgba(160,175,200,0.65)';cx.fillText('CABIN',CAB.x+CAB.w/2,CAB.y+12);var tc;if(ct<-5)tc='rgba(155,195,255,0.95)';else if(ct<5)tc='rgba(130,180,245,0.95)';else if(ct<13)tc='rgba(110,165,225,0.95)';else if(ct<20)tc='rgba(100,210,170,0.95)';else if(ct<27)tc='rgba(200,200,120,0.95)';else tc='rgba(230,155,70,0.95)';cx.font='bold 36px sans-serif';cx.textAlign='center';cx.textBaseline='middle';cx.fillStyle=tc;cx.fillText(ct+'\xb0C',CAB.x+CAB.w/2,CAB.y+CAB.h/2-6);var status,sc;if(ct<-5){status='Dangerously cold';sc='rgba(155,195,255,0.85)';}else if(ct<2){status='Near freezing';sc='rgba(130,180,245,0.85)';}else if(ct<8){status='Very cold';sc='rgba(120,170,235,0.85)';}else if(ct<13){status='Cold\u2014jacket on';sc='rgba(110,165,225,0.8)';}else if(ct<20){status='Comfortable';sc='rgba(90,200,155,0.85)';}else if(ct<27){status='Warm';sc='rgba(200,200,110,0.85)';}else{status='Hot';sc='rgba(225,145,60,0.85)';}cx.font='11px sans-serif';cx.textBaseline='middle';cx.fillStyle=sc;cx.fillText(status,CAB.x+CAB.w/2,CAB.y+CAB.h/2+28);var note=getNote(alt,vPct);if(note){cx.font='10px sans-serif';cx.textBaseline='middle';cx.fillStyle=note.col;var words=note.text.split(' '),line='',lines=[];words.forEach(function(w){var test=line+(line?' ':'')+w;if(test.length>22&&line){lines.push(line);line=w;}else line=test;});lines.push(line);lines.forEach(function(l,i){cx.fillText(l,CAB.x+CAB.w/2,CAB.y+CAB.h/2+50+i*14);});}var bX=CAB.x+18,bY=CAB.y+CAB.h-42,bH=22,bW=CAB.w-36,pct=Math.max(0,Math.min(1,(ct+20)/50));cx.fillStyle='rgba(30,35,55,0.6)';cx.fillRect(bX,bY,bW,bH);var bg=cx.createLinearGradient(bX,0,bX+bW,0);bg.addColorStop(0,'rgba(60,100,200,0.8)');bg.addColorStop(.4,'rgba(80,200,160,0.8)');bg.addColorStop(1,'rgba(220,140,50,0.8)');cx.fillStyle=bg;cx.fillRect(bX,bY,bW*pct,bH);cx.strokeStyle='rgba(80,95,130,0.5)';cx.strokeRect(bX,bY,bW,bH);cx.fillStyle='rgba(200,210,220,0.6)';cx.font='9px sans-serif';cx.textAlign='left';cx.textBaseline='top';cx.fillText('-20\xb0C',bX,bY+bH+3);cx.textAlign='right';cx.fillText('30\xb0C',bX+bW,bY+bH+3);var mX=bX+pct*bW;cx.strokeStyle='rgba(255,255,255,0.85)';cx.lineWidth=1.5;cx.beginPath();cx.moveTo(mX,bY-3);cx.lineTo(mX,bY+bH+3);cx.stroke();}
+    function drawLabels(){var cy1=S.y+(P.y-S.y)/2,cy2=P.y+P.h+(S.y+S.h-P.y-P.h)/2,cold='rgba(80,160,230,0.85)';cx.strokeStyle=cold;cx.lineWidth=2;cx.beginPath();cx.moveTo(8,cy1);cx.lineTo(S.x,cy1);cx.stroke();cx.beginPath();cx.moveTo(8,cy2);cx.lineTo(S.x,cy2);cx.stroke();function ah(x,y){cx.fillStyle=cold;cx.beginPath();cx.moveTo(x,y);cx.lineTo(x+10,y-5);cx.lineTo(x+10,y+5);cx.closePath();cx.fill();}ah(S.x-10,cy1);ah(S.x-10,cy2);cx.font='bold 11px sans-serif';cx.textAlign='left';cx.textBaseline='bottom';cx.fillStyle='rgba(110,170,230,0.9)';cx.fillText('Cold ram air in',10,cy1-5);cx.font='10px sans-serif';cx.fillStyle='rgba(90,150,215,0.75)';cx.textBaseline='top';cx.fillText('OAT: '+oat(alt)+'\xb0C',10,cy1+2);}
+    function drawTpts(){var pspd=(spd/120)*1.8;tpts=tpts.filter(function(p){p.x+=p.vx*pspd;return p.x<CAB.x+CAB.w-10;});for(var ti=0;ti<Math.floor(vPct/100*2.5)&&tpts.length<40;ti++)tpts.push(mkTpt());var af=Math.max(0.1,1-alt/28000),wf=Math.max(0,Math.min(1,af*(vPct/100)*.8));tpts.forEach(function(p){var r=Math.round(80+wf*150),g2=Math.round(130+wf*(110-130)),b=Math.round(200-wf*160);cx.beginPath();cx.arc(p.x,p.y,p.sz/2,0,Math.PI*2);cx.fillStyle='rgba('+r+','+g2+','+b+','+(p.x>CAB.x?0.5:0.7)+')';cx.fill();});}
+    function draw(){cx.clearRect(0,0,W,H);drawStructure();var pspd=(spd/120)*1.6;pts=pts.filter(function(p){p.x+=p.vx*pspd;p.y+=p.vy;if(p.y<p.mn){p.y=p.mn;p.vy=Math.abs(p.vy);}if(p.y>p.mx){p.y=p.mx;p.vy=-Math.abs(p.vy);}p.vy+=p.y<p.cy?.018:-.018;p.vy=Math.max(-.65,Math.min(.65,p.vy));return p.x<S.x+S.w;});var r2=Math.max(2,Math.floor(pspd*3));for(var di=0;di<r2&&pts.length<200;di++)pts.push(mp(false));pts.forEach(function(p){var inT=p.y>=S.y&&p.y<=P.y,inB=p.y>=P.y+P.h&&p.y<=S.y+S.h;if(!inT&&!inB)return;cx.beginPath();cx.arc(p.x,p.y,p.sz/2,0,Math.PI*2);cx.fillStyle=pcol(p.x,alt);cx.fill();});drawTpts();drawValve();drawCabin();drawLabels();fr++;requestAnimationFrame(draw);}
+    document.getElementById('muff-alt').addEventListener('input',function(){alt=+this.value;document.getElementById('muff-alt-label').textContent=alt===0?'Sea level':alt.toLocaleString()+' ft';});
+    document.getElementById('muff-spd').addEventListener('input',function(){spd=+this.value;document.getElementById('muff-spd-label').textContent=spd+' kt';});
+    document.getElementById('muff-valve').addEventListener('input',function(){vPct=+this.value;document.getElementById('muff-valve-label').textContent=vPct+'%';});
+    draw();
+  }
+
+  function init(){
+    var wrapper=document.getElementById('muff-wrapper');
+    var cv=document.getElementById('muff-cv');
+    if(!wrapper||!cv)return;
+    // Observe the WRAPPER (visible), not the hidden canvas
+    if('IntersectionObserver' in window){
+      var obs=new IntersectionObserver(function(entries){
+        entries.forEach(function(e){if(e.isIntersecting){obs.unobserve(wrapper);startAnimation(cv);}});
+      },{threshold:0.1});
+      obs.observe(wrapper);
+    } else {
+      startAnimation(cv);
+    }
+  }
+
+  function poll(){if(document.getElementById('muff-wrapper')){init();}else{setTimeout(poll,100);}}
+  poll();
+})();
+</script>
