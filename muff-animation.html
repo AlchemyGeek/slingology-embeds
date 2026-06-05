@@ -55,7 +55,7 @@
     var VCX=453,VCY=S.y+S.h/2,CAB={x:476,y:40,w:162,h:218};
     var alt=0,spd=120,vPct=100,fr=0,pts=[],tpts=[];
     function oat(a){return Math.round(15-a/1000*2);}
-    function cabinTemp(a,s,v){var ot=oat(a),af=Math.max(0.1,1-a/28000),sf=0.78+0.22*(s/120);return Math.round(ot+5+13*af*sf*(v/100));}
+    function cabinTemp(a,s,v){var ot=oat(a),af=Math.max(0.1,1-a/28000),sf=0.78+0.22*(s/120);return Math.round(ot+2+15*af*sf*(v/100));}
     function getNote(a,v){var ct=cabinTemp(a,spd,v);if(a>=9500&&a<=10500&&v>=95)return{text:'FL100 std ISA: ~'+ct+'\xb0C \u2014 jacket required',col:'rgba(130,175,235,0.9)'};if(a>=14500&&v>=95)return{text:'FL150: near or below freezing',col:'rgba(120,160,230,0.9)'};return null;}
     function cabinBg(t){var st=[{t:-15,r:6,g:10,b:48},{t:-5,r:10,g:20,b:72},{t:5,r:14,g:35,b:88},{t:13,r:18,g:55,b:82},{t:20,r:20,g:78,b:65},{t:27,r:75,g:62,b:18}];for(var i=0;i<st.length-1;i++){if(t>=st[i].t&&t<=st[i+1].t){var f=(t-st[i].t)/(st[i+1].t-st[i].t);return'rgb('+Math.round(st[i].r+f*(st[i+1].r-st[i].r))+','+Math.round(st[i].g+f*(st[i+1].g-st[i].g))+','+Math.round(st[i].b+f*(st[i+1].b-st[i].b))+')';}}return t<st[0].t?'rgb(4,8,40)':'rgb(75,62,18)';}
     function mp(rand){var top=Math.random()>.5,p={x:S.x+(rand?Math.random()*S.w:0),vx:.9+Math.random()*.5,vy:(Math.random()-.5)*.35,sz:1.8+Math.random()*2};if(top){var ch=P.y-S.y;p.y=S.y+3+Math.random()*(ch-6);p.cy=S.y+ch/2;p.mn=S.y+2;p.mx=P.y-2;}else{var ch2=(S.y+S.h)-(P.y+P.h);p.y=P.y+P.h+3+Math.random()*(ch2-6);p.cy=P.y+P.h+ch2/2;p.mn=P.y+P.h+2;p.mx=S.y+S.h-2;}return p;}
