@@ -6,7 +6,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    background: #0a0a0a;
+    background: #fff;
     font-family: 'Instrument Sans', 'Inter', sans-serif;
     display: flex;
     justify-content: center;
@@ -27,14 +27,14 @@
     font-family: 'Playfair Display', Georgia, serif;
     font-size: 1.15rem;
     font-weight: 700;
-    color: #fff;
+    color: #111;
     text-align: center;
     margin-bottom: 5px;
   }
 
   .diagram-subtitle {
     font-size: 0.68rem;
-    color: #666;
+    color: #777;
     text-align: center;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -57,8 +57,8 @@
     text-transform: uppercase;
     padding: 5px 12px;
     border-radius: 20px;
-    border: 1.5px solid #333;
-    color: #555;
+    border: 1.5px solid #d0d0d0;
+    color: #999;
     cursor: pointer;
     transition: all 0.25s ease;
     background: transparent;
@@ -69,7 +69,7 @@
   .pill.active {
     background: #b8922a;
     border-color: #b8922a;
-    color: #fff;
+    color: #111;
   }
 
   /* canvas */
@@ -82,8 +82,8 @@
   /* detail panel */
   .detail-panel {
     width: 100%;
-    background: #111;
-    border: 1px solid #222;
+    background: #f8f8f8;
+    border: 1px solid #e0e0e0;
     border-top: none;
     border-radius: 0 0 6px 6px;
     min-height: 148px;
@@ -117,17 +117,17 @@
     font-family: 'Playfair Display', Georgia, serif;
     font-size: 0.95rem;
     font-weight: 700;
-    color: #fff;
+    color: #111;
     margin-bottom: 7px;
   }
 
   .slide-body {
     font-size: 0.74rem;
-    color: #aaa;
+    color: #999;
     line-height: 1.75;
   }
 
-  .slide-body strong { color: #e0e0e0; font-weight: 600; }
+  .slide-body strong { color: #111; font-weight: 600; }
 
   /* metals bar chart */
   .metals { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
@@ -139,7 +139,7 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #ccc;
+    color: #333;
     width: 62px;
     flex-shrink: 0;
   }
@@ -147,7 +147,7 @@
   .metal-bar-bg {
     flex: 1;
     height: 8px;
-    background: #222;
+    background: #e8e8e8;
     border-radius: 4px;
     overflow: hidden;
   }
@@ -166,7 +166,7 @@
 
   .metal-ppm {
     font-size: 0.65rem;
-    color: #666;
+    color: #777;
     width: 52px;
     text-align: right;
     flex-shrink: 0;
@@ -185,7 +185,7 @@
   .report-line {
     height: 9px;
     border-radius: 3px;
-    background: #1e1e1e;
+    background: #ebebeb;
     overflow: hidden;
   }
 
@@ -214,9 +214,9 @@
     padding: 8px 20px;
     border-radius: 4px;
     cursor: pointer;
-    border: 1.5px solid #333;
+    border: 1.5px solid #d0d0d0;
     background: transparent;
-    color: #666;
+    color: #777;
     transition: all 0.2s ease;
   }
 
@@ -226,7 +226,7 @@
   .nav-btn.primary {
     background: #b8922a;
     border-color: #b8922a;
-    color: #fff;
+    color: #111;
   }
 
   .nav-btn.primary:hover:not(:disabled) { background: #a07822; border-color: #a07822; }
@@ -243,7 +243,7 @@
   .progress-bar {
     width: 100%;
     height: 2px;
-    background: #222;
+    background: #e8e8e8;
     border-radius: 1px;
     overflow: hidden;
   }
@@ -257,7 +257,7 @@
 
   .step-counter {
     font-size: 0.6rem;
-    color: #444;
+    color: #999;
     letter-spacing: 0.06em;
     text-transform: uppercase;
   }
@@ -280,12 +280,12 @@
     flex-shrink: 0;
   }
 
-  .legend-label { font-size: 0.65rem; color: #666; }
-  .legend-label strong { color: #999; font-weight: 600; }
+  .legend-label { font-size: 0.65rem; color: #777; }
+  .legend-label strong { color: #333; font-weight: 600; }
 
   .foot-note {
     font-size: 0.6rem;
-    color: #3a3a3a;
+    color: #aaa;
     text-align: center;
     margin-top: 12px;
     letter-spacing: 0.02em;
@@ -592,11 +592,11 @@ function draw() {
   ctx.clearRect(0, 0, W, H);
 
   // bg
-  ctx.fillStyle = '#0a0a0a';
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, H);
 
   // subtle grid
-  ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+  ctx.strokeStyle = 'rgba(0,0,0,0.04)';
   ctx.lineWidth = 1;
   for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
   for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
@@ -612,14 +612,14 @@ function draw() {
 function drawPipe() {
   // pipe
   ctx.save();
-  ctx.strokeStyle = '#2a2a2a';
+  ctx.strokeStyle = '#d0d0d0';
   ctx.lineWidth = 10;
   ctx.lineCap = 'butt';
   ctx.beginPath();
   ctx.moveTo(W * 0.03, TY);
   ctx.lineTo(TX - 18, TY);
   ctx.stroke();
-  ctx.strokeStyle = '#1a1a1a';
+  ctx.strokeStyle = '#e0e0e0';
   ctx.lineWidth = 5;
   ctx.beginPath();
   ctx.moveTo(W * 0.03, TY);
@@ -628,11 +628,11 @@ function drawPipe() {
 
   // labels — always visible
   ctx.font = `700 11px Inter, sans-serif`;
-  ctx.fillStyle = 'rgba(220,200,140,0.85)';
+  ctx.fillStyle = 'rgba(120,90,20,0.95)';
   ctx.textAlign = 'left';
   ctx.fillText('OIL SAMPLE', W * 0.03, TY - 16);
   ctx.font = `500 10px Inter, sans-serif`;
-  ctx.fillStyle = 'rgba(160,145,100,0.7)';
+  ctx.fillStyle = 'rgba(130,110,60,0.75)';
   ctx.fillText('2–3 oz · warm · mid-drain', W * 0.03, TY - 5);
   ctx.restore();
 }
@@ -694,7 +694,7 @@ function drawTorch() {
 
   // torch body (always visible)
   ctx.save();
-  ctx.strokeStyle = '#3a3a3a';
+  ctx.strokeStyle = '#bbb';
   ctx.lineWidth = 2.5;
   ctx.lineCap = 'round';
   ctx.beginPath();
@@ -713,11 +713,11 @@ function drawTorch() {
   // torch label
   const labelAlpha = 0.5 + f * 0.5;
   ctx.font = `700 10px Inter, sans-serif`;
-  ctx.fillStyle = `rgba(220,200,140,${labelAlpha})`;
+  ctx.fillStyle = `rgba(120,90,20,${labelAlpha})`;
   ctx.textAlign = 'center';
   ctx.fillText('ICP TORCH', TX, TY + 48);
   ctx.font = `500 10px Inter, sans-serif`;
-  ctx.fillStyle = `rgba(184,146,42,${labelAlpha * 0.8})`;
+  ctx.fillStyle = `rgba(150,115,40,${labelAlpha * 0.9})`;
   ctx.fillText('~6,000°C', TX, TY + 60);
   ctx.restore();
 }
@@ -768,11 +768,11 @@ function drawStepAnnotations() {
   if (current >= 2 && state.beams.length > 0) {
     const a = Math.min(1, state.beams.length / 6);
     ctx.font = `700 10px Inter, sans-serif`;
-    ctx.fillStyle = `rgba(220,200,140,${a * 0.7})`;
+    ctx.fillStyle = `rgba(80,60,20,${a * 0.85})`;
     ctx.textAlign = 'right';
     ctx.fillText('SPECTROMETER', W - 16, TY - 16);
     ctx.font = `500 10px Inter, sans-serif`;
-    ctx.fillStyle = `rgba(160,145,100,${a * 0.6})`;
+    ctx.fillStyle = `rgba(110,90,40,${a * 0.7})`;
     ctx.fillText('reads each wavelength', W - 16, TY - 4);
   }
 
