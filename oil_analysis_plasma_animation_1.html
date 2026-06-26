@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0a0a0a;
+    font-family: 'Instrument Sans', 'Inter', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 680px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    margin-bottom: 4px;
+    letter-spacing: 0.01em;
+  }
+
+  .subtitle {
+    font-size: 0.68rem;
+    color: #888;
+    text-align: center;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 32px;
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    max-width: 680px;
+    height: auto;
+    border-radius: 6px;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px 20px;
+    margin-top: 24px;
+    max-width: 600px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .legend-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .legend-label {
+    font-size: 0.68rem;
+    color: #aaa;
+    letter-spacing: 0.03em;
+  }
+
+  .legend-label strong {
+    color: #e0e0e0;
+    font-weight: 600;
+  }
+
+  .legend-label strong {
+    color: #ccc;
+    font-weight: 600;
+  }
+
+  .note {
+    font-size: 0.62rem;
+    color: #666;
+    text-align: center;
+    margin-top: 16px;
+    letter-spacing: 0.03em;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="title">Inside the ICP Torch</div>
+  <div class="subtitle">Oil enters plasma · Elements separate by wavelength</div>
+
+  <canvas id="c" width="680" height="420"></canvas>
+
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:#e05a3a"></div>
+      <div class="legend-label"><strong>Iron</strong> — gearbox, rings, cams</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:#b8e0a0"></div>
+      <div class="legend-label"><strong>Nickel</strong> — Nikasil cylinders</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:#5ab4e8"></div>
+      <div class="legend-label"><strong>Aluminum</strong> — pistons, bearings</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:#e8a830"></div>
+      <div class="legend-label"><strong>Copper</strong> — thrust washers</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:#c478e8"></div>
+      <div class="legend-label"><strong>Lead</strong> — 100LL combustion byproduct</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:#78e8d8"></div>
+      <div class="legend-label"><strong>Silicon</strong> — dirt ingestion / sealants</div>
+    </div>
+  </div>
+
+  <div class="note">Spectrographic analysis detects particles &lt;5 microns · Results reported in parts per million (ppm)</div>
+
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = canvas.width;
+const H = canvas.height;
+
+// Element definitions — each gets a color and emission angle
+const ELEMENTS = [
+  { name: 'Iron',     color: '#e05a3a', angle: -62 },
+  { name: 'Nickel',   color: '#b8e0a0', angle: -38 },
+  { name: 'Aluminum', color: '#5ab4e8', angle: -18 },
+  { name: 'Copper',   color: '#e8a830', angle:   8 },
+  { name: 'Lead',     color: '#c478e8', angle:  28 },
+  { name: 'Silicon',  color: '#78e8d8', angle:  50 },
+];
+
+// Torch center
+const TX = W * 0.38;
+const TY = H * 0.58;
+
+// Particle pools
+const oilDrops = [];
+const beams = [];
+const plasmaParticles = [];
+
+let tick = 0;
+let phase = 0; // 0=intro, 1=running
+
+// ── Utilities ──────────────────────────────────────────────
+function rnd(a, b) { return a + Math.random() * (b - a); }
+function lerp(a, b, t) { return a + (b - a) * t; }
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return [r,g,b];
+}
+
+// ── Oil drops (entering from left) ────────────────────────
+function spawnOilDrop() {
+  oilDrops.push({
+    x: W * 0.04,
+    y: TY + rnd(-6, 6),
+    vx: rnd(1.0, 1.6),
+    vy: rnd(-0.3, 0.3),
+    r: rnd(3, 5.5),
+    alpha: 1,
+    done: false
+  });
+}
+
+function updateOilDrops() {
+  for (let i = oilDrops.length - 1; i >= 0; i--) {
+    const d = oilDrops[i];
+    d.x += d.vx;
+    d.y += d.vy;
+    // when it reaches torch, explode into beams + plasma
+    const dist = Math.hypot(d.x - TX, d.y - TY);
+    if (dist < 22) {
+      spawnPlasmaExplosion(d.x, d.y);
+      spawnBeams();
+      oilDrops.splice(i, 1);
+    } else if (d.x > W) {
+      oilDrops.splice(i, 1);
+    }
+  }
+}
+
+function drawOilDrops() {
+  oilDrops.forEach(d => {
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(180, 140, 40, ${d.alpha})`;
+    ctx.fill();
+    // small trail
+    ctx.beginPath();
+    ctx.moveTo(d.x - d.vx * 3, d.y);
+    ctx.lineTo(d.x, d.y);
+    ctx.strokeStyle = `rgba(180, 140, 40, 0.3)`;
+    ctx.lineWidth = d.r * 0.8;
+    ctx.stroke();
+  });
+}
+
+// ── Plasma explosion particles ────────────────────────────
+function spawnPlasmaExplosion(x, y) {
+  for (let i = 0; i < 14; i++) {
+    const angle = rnd(0, Math.PI * 2);
+    const speed = rnd(1.5, 4.5);
+    plasmaParticles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      r: rnd(1.5, 3.5),
+      life: 1,
+      decay: rnd(0.025, 0.055),
+      color: ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)].color
+    });
+  }
+}
+
+function updatePlasmaParticles() {
+  for (let i = plasmaParticles.length - 1; i >= 0; i--) {
+    const p = plasmaParticles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.04;
+    p.life -= p.decay;
+    if (p.life <= 0) plasmaParticles.splice(i, 1);
+  }
+}
+
+function drawPlasmaParticles() {
+  plasmaParticles.forEach(p => {
+    const [r,g,b] = hexToRgb(p.color);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${r},${g},${b},${p.life * 0.9})`;
+    ctx.fill();
+  });
+}
+
+// ── Spectral beams ─────────────────────────────────────────
+function spawnBeams() {
+  ELEMENTS.forEach((el, i) => {
+    const angleRad = (el.angle * Math.PI) / 180;
+    const speed = rnd(1.2, 1.8);
+    beams.push({
+      x: TX,
+      y: TY,
+      vx: Math.cos(angleRad) * speed,
+      vy: Math.sin(angleRad) * speed,
+      color: el.color,
+      name: el.name,
+      trail: [],
+      maxTrail: 55,
+      r: rnd(2, 3.2),
+      life: 1,
+      decay: 0.0018,
+      labeled: false,
+      labelAlpha: 0,
+      done: false
+    });
+  });
+}
+
+function updateBeams() {
+  for (let i = beams.length - 1; i >= 0; i--) {
+    const b = beams[i];
+    b.trail.push({ x: b.x, y: b.y });
+    if (b.trail.length > b.maxTrail) b.trail.shift();
+    b.x += b.vx;
+    b.y += b.vy;
+    b.life -= b.decay;
+
+    // fade label in when beam reaches right side
+    if (b.x > W * 0.52 && !b.labeled) {
+      b.labeled = true;
+    }
+    if (b.labeled) b.labelAlpha = Math.min(1, b.labelAlpha + 0.018);
+
+    if (b.life <= 0 || b.x > W + 20 || b.y < -20 || b.y > H + 20) {
+      beams.splice(i, 1);
+    }
+  }
+}
+
+function drawBeams() {
+  beams.forEach(b => {
+    if (b.trail.length < 2) return;
+    const [r,g,b2] = hexToRgb(b.color);
+
+    // glow trail
+    for (let j = 1; j < b.trail.length; j++) {
+      const t = j / b.trail.length;
+      const alpha = t * b.life * 0.85;
+      const width = b.r * t * 2.2;
+      ctx.beginPath();
+      ctx.moveTo(b.trail[j-1].x, b.trail[j-1].y);
+      ctx.lineTo(b.trail[j].x, b.trail[j].y);
+      ctx.strokeStyle = `rgba(${r},${g2(b2,t)},${b2},${alpha})`;
+      ctx.lineWidth = width;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+
+    // bright head
+    const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 3);
+    grad.addColorStop(0, `rgba(${r},${g},${b2},${b.life})`);
+    grad.addColorStop(1, `rgba(${r},${g},${b2},0)`);
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r * 3, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // label
+    if (b.labeled && b.labelAlpha > 0.05 && b.x < W - 10) {
+      ctx.font = `600 11px 'Instrument Sans', Inter, sans-serif`;
+      ctx.fillStyle = `rgba(${r},${g},${b2},${b.labelAlpha * b.life})`;
+      ctx.textAlign = 'left';
+      ctx.fillText(b.name, b.x + 8, b.y + 4);
+    }
+  });
+}
+
+function g2(val, t) { return val; } // placeholder — actual green channel passed
+
+// fix — override drawBeams to pass correct rgb
+function drawBeamsFixed() {
+  beams.forEach(b => {
+    if (b.trail.length < 2) return;
+    const [ri,gi,bi] = hexToRgb(b.color);
+
+    for (let j = 1; j < b.trail.length; j++) {
+      const t = j / b.trail.length;
+      const alpha = t * b.life * 0.85;
+      const width = b.r * t * 2.2;
+      ctx.beginPath();
+      ctx.moveTo(b.trail[j-1].x, b.trail[j-1].y);
+      ctx.lineTo(b.trail[j].x, b.trail[j].y);
+      ctx.strokeStyle = `rgba(${ri},${gi},${bi},${alpha})`;
+      ctx.lineWidth = width;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+
+    // glow head
+    const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 3.5);
+    grad.addColorStop(0, `rgba(${ri},${gi},${bi},${b.life * 0.95})`);
+    grad.addColorStop(0.4, `rgba(${ri},${gi},${bi},${b.life * 0.4})`);
+    grad.addColorStop(1, `rgba(${ri},${gi},${bi},0)`);
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r * 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    if (b.labeled && b.labelAlpha > 0.05 && b.x < W - 60) {
+      ctx.save();
+      ctx.font = `700 13px Inter, sans-serif`;
+      ctx.fillStyle = `rgba(${ri},${gi},${bi},${b.labelAlpha * Math.min(1, b.life * 2)})`;
+      ctx.textAlign = 'left';
+      ctx.fillText(b.name, b.x + 10, b.y + 4);
+      ctx.restore();
+    }
+  });
+}
+
+// ── Torch drawing ──────────────────────────────────────────
+function drawTorch() {
+  const pulse = Math.sin(tick * 0.08) * 0.15 + 0.85;
+
+  // outer glow
+  const outerGrad = ctx.createRadialGradient(TX, TY, 0, TX, TY, 60 * pulse);
+  outerGrad.addColorStop(0, 'rgba(184,146,42,0.18)');
+  outerGrad.addColorStop(0.5, 'rgba(184,146,42,0.06)');
+  outerGrad.addColorStop(1, 'rgba(184,146,42,0)');
+  ctx.beginPath();
+  ctx.arc(TX, TY, 60 * pulse, 0, Math.PI * 2);
+  ctx.fillStyle = outerGrad;
+  ctx.fill();
+
+  // core plasma
+  const coreGrad = ctx.createRadialGradient(TX, TY, 0, TX, TY, 22 * pulse);
+  coreGrad.addColorStop(0, `rgba(255,255,240,${0.95 * pulse})`);
+  coreGrad.addColorStop(0.3, `rgba(255,220,100,${0.8 * pulse})`);
+  coreGrad.addColorStop(0.7, `rgba(184,146,42,${0.5 * pulse})`);
+  coreGrad.addColorStop(1, 'rgba(184,146,42,0)');
+  ctx.beginPath();
+  ctx.arc(TX, TY, 22 * pulse, 0, Math.PI * 2);
+  ctx.fillStyle = coreGrad;
+  ctx.fill();
+
+  // torch body
+  ctx.save();
+  ctx.strokeStyle = '#444';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  // nozzle top
+  ctx.beginPath();
+  ctx.moveTo(TX - 14, TY - 28);
+  ctx.lineTo(TX - 8, TY - 8);
+  ctx.lineTo(TX + 8, TY - 8);
+  ctx.lineTo(TX + 14, TY - 28);
+  ctx.stroke();
+  // nozzle bottom
+  ctx.beginPath();
+  ctx.moveTo(TX - 14, TY + 28);
+  ctx.lineTo(TX - 8, TY + 8);
+  ctx.lineTo(TX + 8, TY + 8);
+  ctx.lineTo(TX + 14, TY + 28);
+  ctx.stroke();
+  ctx.restore();
+
+  // label
+  ctx.save();
+  ctx.font = `700 10px Inter, sans-serif`;
+  ctx.fillStyle = 'rgba(220,200,140,0.95)';
+  ctx.textAlign = 'center';
+  ctx.fillText('ICP TORCH', TX, TY + 50);
+  ctx.font = `500 10px Inter, sans-serif`;
+  ctx.fillStyle = 'rgba(184,146,42,0.9)';
+  ctx.fillText('~6,000°C', TX, TY + 63);
+  ctx.restore();
+}
+
+// ── Oil entry pipe ─────────────────────────────────────────
+function drawPipe() {
+  ctx.save();
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'butt';
+  ctx.beginPath();
+  ctx.moveTo(W * 0.04, TY);
+  ctx.lineTo(TX - 16, TY);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(W * 0.04, TY);
+  ctx.lineTo(TX - 16, TY);
+  ctx.stroke();
+
+  // pipe label
+  ctx.font = `700 10px Inter, sans-serif`;
+  ctx.fillStyle = 'rgba(220,200,140,0.95)';
+  ctx.textAlign = 'left';
+  ctx.fillText('OIL SAMPLE', W * 0.04, TY - 14);
+  ctx.font = `500 10px Inter, sans-serif`;
+  ctx.fillStyle = 'rgba(180,165,120,0.85)';
+  ctx.fillText('2–3 oz · warm · mid-drain', W * 0.04, TY - 3);
+  ctx.restore();
+}
+
+// ── Spectrometer label ─────────────────────────────────────
+function drawSpectrometerLabel() {
+  if (beams.length === 0) return;
+  const alpha = Math.min(1, beams.length / 4) * 0.5;
+  ctx.save();
+  ctx.font = `700 10px Inter, sans-serif`;
+  ctx.fillStyle = `rgba(220,200,140,${alpha * 2})`;
+  ctx.textAlign = 'right';
+  ctx.fillText('SPECTROMETER', W - 16, TY - 18);
+  ctx.font = `500 10px Inter, sans-serif`;
+  ctx.fillStyle = `rgba(180,165,120,${alpha * 2})`;
+  ctx.fillText('reads each wavelength', W - 16, TY - 6);
+  ctx.restore();
+}
+
+// ── Background grid ────────────────────────────────────────
+function drawGrid() {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += 40) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ── Main loop ──────────────────────────────────────────────
+function loop() {
+  ctx.clearRect(0, 0, W, H);
+
+  // background
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(0, 0, W, H);
+  drawGrid();
+
+  // spawn oil drops
+  if (tick % 55 === 0) spawnOilDrop();
+
+  updateOilDrops();
+  updatePlasmaParticles();
+  updateBeams();
+
+  drawPipe();
+  drawOilDrops();
+  drawPlasmaParticles();
+  drawTorch();
+  drawBeamsFixed();
+  drawSpectrometerLabel();
+
+  tick++;
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
