@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADAHRS Failure Simulator — Slingology</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gold:#c9a24b; --gold-dim:#8a6d25; --ink:#1a1a1a; --grey:#8a8a8a;
+    --panel:#15181d; --panel-edge:#2a2f38; --panel-hi:#1c2027;
+    --green:#4fc06a; --amber:#e0b34a; --red:#e05252;
+    --off:#3a4049;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Instrument Sans',system-ui,sans-serif;color:var(--ink);
+       background:#fff;max-width:680px;margin:0 auto;padding:14px 12px}
+  h1{font-family:'Playfair Display',serif;font-weight:600;font-size:1.3rem}
+  .sub{color:var(--grey);font-size:.8rem;margin:2px 0 12px}
+  .sub b{color:var(--gold-dim)}
+
+  /* fault switches */
+  .faults{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .faults button{
+    font:inherit;font-size:.75rem;font-weight:600;padding:8px 12px;
+    border:1px solid #d8d2c6;border-radius:6px;background:#faf8f4;
+    cursor:pointer;color:var(--ink);transition:all .15s;
+    display:flex;align-items:center;gap:7px}
+  .faults button::before{
+    content:'';width:8px;height:8px;border-radius:50%;
+    background:#c8c2b6;transition:all .15s}
+  .faults button:hover{border-color:var(--gold)}
+  .faults button.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .faults button.active::before{background:var(--red);box-shadow:0 0 6px var(--red)}
+  .faults button.reset{color:var(--gold-dim);border-color:var(--gold)}
+  .faults button.reset::before{display:none}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:490px){.grid{grid-template-columns:1fr}}
+
+  /* avionics panel cards */
+  .arch{
+    background:linear-gradient(178deg,var(--panel-hi) 0%,var(--panel) 30%);
+    border:1px solid var(--panel-edge);border-radius:12px;padding:12px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 3px 10px rgba(0,0,0,.18)}
+  .arch h2{font-family:'Playfair Display',serif;font-weight:500;font-size:.95rem;
+    color:#e8e4dc;margin-bottom:9px;letter-spacing:.02em}
+  .arch h2 span{color:var(--gold);font-size:.72rem;font-family:'Instrument Sans';
+    font-weight:600;letter-spacing:.12em;margin-right:7px}
+
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .chip{
+    font-size:.7rem;font-weight:600;letter-spacing:.04em;
+    padding:7px 10px;border-radius:5px;color:#dfe4ea;
+    background:#22262e;border:1px solid #343a45;
+    border-top-color:#454d5b;
+    display:flex;align-items:center;gap:6px;transition:all .25s}
+  .chip::before{content:'';width:6px;height:6px;border-radius:50%;
+    background:var(--green);box-shadow:0 0 7px var(--green);transition:all .25s}
+  .chip.g5{border-color:var(--gold);box-shadow:0 0 8px rgba(201,162,75,.25)}
+  .chip.dead{color:#6a5252;background:#1c1516;border-color:#4a2e2e;
+    animation:dieout .5s}
+  .chip.dead::before{background:var(--red);box-shadow:none;animation:flick .5s}
+  .chip.dead::after{content:'✕';color:var(--red);font-size:.65rem;margin-left:2px}
+  .chip.lying{border-color:var(--amber)}
+  .chip.lying::before{background:var(--amber);box-shadow:0 0 7px var(--amber);
+    animation:pulse 1.2s infinite}
+  @keyframes dieout{0%{opacity:1}30%{opacity:.3}45%{opacity:.9}60%{opacity:.2}100%{opacity:1}}
+  @keyframes flick{0%,45%,70%{box-shadow:0 0 7px var(--green);background:var(--green)}
+    30%,60%,100%{box-shadow:none;background:var(--red)}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* annunciator */
+  .ann{border-radius:6px;padding:8px 10px;margin-bottom:7px;
+    border:1px solid;font-size:.72rem;line-height:1.5}
+  .ann b{display:block;font-size:.74rem;letter-spacing:.14em;margin-bottom:1px}
+  .ann.ok{background:rgba(79,192,106,.08);border-color:rgba(79,192,106,.4);color:var(--green)}
+  .ann.warn{background:rgba(224,179,74,.08);border-color:rgba(224,179,74,.4);color:var(--amber)}
+  .ann.bad{background:rgba(224,82,82,.1);border-color:rgba(224,82,82,.45);color:var(--red)}
+  .ap{font-size:.7rem;color:#9aa2ad;letter-spacing:.02em}
+  .ap b{color:#dfe4ea;letter-spacing:.1em;font-size:.68rem}
+  .ap.gold b{color:var(--gold)}
+
+  .foot{margin-top:12px;font-size:.7rem;color:var(--grey);font-style:italic}
+  noscript .ann{margin-bottom:6px}
+</style>
+</head>
+<body>
+<h1>Break things here, where it&rsquo;s free</h1>
+<p class="sub">Toggle failures — <b>stack as many as you like</b> — and watch what survives.</p>
+
+<div class="faults" id="faults" hidden>
+  <button data-f="adahrs">ADAHRS #1 dies</button>
+  <button data-f="lie">Sensor lies</button>
+  <button data-f="sw">Software bug</button>
+  <button data-f="can">CAN bus fault</button>
+  <button data-f="power">Main bus dead</button>
+  <button data-f="gdu">Displays fail</button>
+  <button data-f="g5">G5 fails</button>
+  <button class="reset" data-f="reset">Reset</button>
+</div>
+
+<div class="grid">
+  <div class="arch">
+    <h2><span>ARCH A</span>Dual GSU 25</h2>
+    <div class="chips" id="chipsA">
+      <span class="chip" data-c="pfd">PFD</span>
+      <span class="chip" data-c="mfd">MFD</span>
+      <span class="chip" data-c="gsu1">GSU 25 #1</span>
+      <span class="chip" data-c="gsu2">GSU 25 #2</span>
+    </div>
+    <div class="ann ok" id="annA"><b>NORMAL</b>Two identical sensors, cross-comparing.</div>
+    <div class="ap" id="apA"><b>AP</b> · full flight director, coupled nav</div>
+  </div>
+  <div class="arch">
+    <h2><span>ARCH B</span>GSU 25 + G5</h2>
+    <div class="chips" id="chipsB">
+      <span class="chip" data-c="pfd">PFD</span>
+      <span class="chip" data-c="mfd">MFD</span>
+      <span class="chip" data-c="gsu1">GSU 25</span>
+      <span class="chip g5" data-c="g5">G5</span>
+    </div>
+    <div class="ann ok" id="annB"><b>NORMAL</b>Dissimilar standby, watching independently.</div>
+    <div class="ap" id="apB"><b>AP</b> · full flight director, coupled nav</div>
+  </div>
+</div>
+
+<noscript>
+  <div style="margin-top:12px">
+    <div class="ann bad" style="background:#f0e3e3"><b>ARCH A — software bug, CAN fault, power loss, or display failure</b>All attitude data lost: both sensors share the failed element.</div>
+    <div class="ann ok" style="background:#e7efe7;color:#5a7d5a;border-color:#5a7d5a"><b>ARCH B — same events</b>The G5 survives on its own firmware, its own battery, its own display — and keeps the autopilot coupled when the displays are what failed.</div>
+  </div>
+</noscript>
+
+<p class="foot">Per Garmin 190-01115-01. Servo power and CAN dependencies included — reversion paths are hypotheses until ground-tested. slingology.blog</p>
+
+<script>
+(function(){
+  document.getElementById('faults').hidden = false;
+  var active = {};
+
+  function state(arch){
+    var f = active;
+    var dead = {}, lying = {};
+    if (f.adahrs) dead.gsu1 = 1;
+    if (f.gdu) { dead.pfd = 1; dead.mfd = 1; }
+    if (f.power) { dead.pfd = 1; dead.mfd = 1; dead.gsu1 = 1; if(arch==='A') dead.gsu2 = 1; }
+    if (f.can) { dead.pfd = 1; dead.mfd = 1; dead.gsu1 = 1; if(arch==='A') dead.gsu2 = 1; }
+    if (f.sw) { if(arch==='A'){ if(!dead.gsu1) lying.gsu1=1; if(!dead.gsu2) lying.gsu2=1; }
+                else { if(!dead.gsu1) lying.gsu1=1; } }
+    if (f.lie) { if(!dead.gsu1 && !lying.gsu1) lying.gsu1 = 1; }
+    if (f.g5 && arch==='B') dead.g5 = 1;
+
+    var sens, disp, g5ok = false;
+    if (arch==='A'){
+      sens = (!dead.gsu1 && !lying.gsu1) || (!dead.gsu2 && !lying.gsu2);
+      disp = !dead.pfd || !dead.mfd;
+    } else {
+      sens = (!dead.gsu1 && !lying.gsu1);
+      disp = !dead.pfd || !dead.mfd;
+      g5ok = !dead.g5; // dissimilar, self-powered, self-displayed — but still hardware
+    }
+
+    // attitude availability
+    var att, cls, t, d;
+    var anyLie = Object.keys(lying).length > 0;
+    if (arch==='A'){
+      if (sens && disp && !anyLie){ cls='ok'; t='NORMAL'; d='Attitude data healthy.';
+        if (f.adahrs){ t='REVERTED'; d='GSU #2 took over seamlessly — Architecture A\u2019s best case.'; }
+        else if (f.g5){ d='Attitude data healthy — no G5 aboard to lose.'; } }
+      else if (anyLie && sens===false && disp){
+        if (f.sw){ cls='bad'; t='UNDETECTED'; d='Both sensors agree on the same lie. Miscompare stays silent.'; }
+        else { cls='warn'; t='MISCOMPARE'; d='Cross-comparison flags the disagreement. Pilot arbitrates.'; }
+      }
+      else if (anyLie && disp){ cls='warn'; t='MISCOMPARE'; d='Cross-comparison flags the disagreement. Pilot arbitrates.'; }
+      else { cls='bad'; t='ATTITUDE LOST'; d = !disp ? 'Sensors have nowhere to display.' : 'No trustworthy attitude source remains.'; }
+      // special: single sensor lying (lie fault) with adahrs dead -> lying sensor is the only one
+      if (f.lie && f.adahrs){ cls='bad'; t='UNDETECTED'; d='The only remaining sensor is the one that\u2019s lying — nothing left to compare against.'; }
+    } else {
+      if (sens && disp && !anyLie){
+        if (dead.g5){ cls='warn'; t='STANDBY LOST'; d='Primary system healthy — but your margin is gone. Back to a single-ADAHRS panel; fix before further IMC.'; }
+        else { cls='ok'; t='NORMAL'; d='Attitude data healthy.'; }
+      }
+      else if (anyLie && g5ok && disp){ cls='warn'; t='CROSS-CHECK'; d='G5 disagrees with the PFD — genuinely independent evidence. Your scan is the monitor.'; }
+      else if (anyLie && !g5ok && disp){ cls='bad'; t='UNDETECTED'; d='A lying sensor and no independent arbiter — the dissimilarity advantage died with the G5.'; }
+      else if (!sens && disp && g5ok){ cls='warn'; t='REVERTED'; d='PFD shows the G5\u2019s attitude and air data. Standby-grade — divert.'; }
+      else if (!disp && g5ok){ cls='ok'; t='G5 FLYING'; d='Attitude, airspeed, altitude on the standby' + (f.power ? ' — battery, up to 4 hr.' : '.'); }
+      else { cls='bad'; t='ATTITUDE LOST'; d='Primary chain down and the standby with it. This is the combination Architecture B cannot answer either.'; }
+      if (f.sw && !disp && g5ok){ cls='ok'; t='G5 FLYING'; d='Independent firmware — the bug isn\u2019t aboard.'; }
+    }
+
+    // autopilot
+    var ap, apGold=false;
+    var servosOk = !f.power && !f.can;   // GSA 28s need bus power; commands travel CAN
+    if (!servosOk){
+      ap = f.power ? 'lost — servos unpowered' : 'lost — servo commands travel the CAN bus';
+    } else if (arch==='A'){
+      if (t==='UNDETECTED') ap = 'following bad data';
+      else if (sens && disp && !anyLie) ap = f.adahrs ? 'unaffected' : 'full flight director, coupled nav';
+      else if (!disp) ap = 'GSA 28 wings-level only (tier 3)';
+      else if (!sens) ap = 'no valid attitude source';
+      else ap = 'pilot arbitrates source';
+    } else {
+      if (t==='UNDETECTED') ap = 'following bad data';
+      else if (sens && disp && !anyLie) ap = 'full flight director, coupled nav';
+      else if (anyLie && disp && g5ok) ap = 'pilot arbitrates source';
+      else if ((!disp || !sens) && g5ok){ ap = 'G5 + GMC 507 coupled (tier 2)'; apGold = true; }
+      else if (!disp && !g5ok) ap = 'GSA 28 wings-level only (tier 3)';
+      else if (!sens && !g5ok) ap = 'no valid attitude source';
+      else ap = 'pilot arbitrates source';
+    }
+
+    return {dead:dead, lying:lying, cls:cls, t:t, d:d, ap:ap, apGold:apGold};
+  }
+
+  function render(){
+    ['A','B'].forEach(function(arch){
+      var st = state(arch);
+      document.querySelectorAll('#chips'+arch+' .chip').forEach(function(c){
+        var id = c.dataset.c;
+        c.classList.toggle('dead', !!st.dead[id]);
+        c.classList.toggle('lying', !!st.lying[id] && !st.dead[id]);
+      });
+      var ann = document.getElementById('ann'+arch);
+      ann.className = 'ann '+st.cls;
+      ann.innerHTML = '<b>'+st.t+'</b>'+st.d;
+      var ap = document.getElementById('ap'+arch);
+      ap.className = 'ap' + (st.apGold ? ' gold' : '');
+      ap.innerHTML = '<b>AP</b> · '+st.ap;
+    });
+  }
+
+  document.getElementById('faults').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if(!b) return;
+    if (b.dataset.f === 'reset'){
+      active = {};
+      document.querySelectorAll('#faults button').forEach(function(x){x.classList.remove('active')});
+    } else {
+      active[b.dataset.f] = !active[b.dataset.f];
+      if (!active[b.dataset.f]) delete active[b.dataset.f];
+      b.classList.toggle('active');
+    }
+    render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>
