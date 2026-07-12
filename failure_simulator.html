@@ -78,9 +78,15 @@
   .ann.ok{background:rgba(79,192,106,.08);border-color:rgba(79,192,106,.4);color:var(--green)}
   .ann.warn{background:rgba(224,179,74,.08);border-color:rgba(224,179,74,.4);color:var(--amber)}
   .ann.bad{background:rgba(224,82,82,.1);border-color:rgba(224,82,82,.45);color:var(--red)}
-  .ap{font-size:.7rem;color:#9aa2ad;letter-spacing:.02em}
-  .ap b{color:#dfe4ea;letter-spacing:.1em;font-size:.68rem}
-  .ap.gold b{color:var(--gold)}
+  /* autopilot annunciator */
+  .ap{border-radius:6px;padding:7px 10px;margin-top:7px;
+    border:1px solid;font-size:.7rem;line-height:1.45}
+  .ap b{display:block;font-size:.68rem;letter-spacing:.14em;margin-bottom:1px}
+  .ap.ok{background:rgba(79,192,106,.08);border-color:rgba(79,192,106,.4);color:var(--green)}
+  .ap.warn{background:rgba(224,179,74,.08);border-color:rgba(224,179,74,.4);color:var(--amber)}
+  .ap.bad{background:rgba(224,82,82,.1);border-color:rgba(224,82,82,.45);color:var(--red)}
+  .ap.gold{background:rgba(201,162,75,.12);border-color:var(--gold);color:var(--gold);
+    box-shadow:0 0 8px rgba(201,162,75,.2)}
 
   .foot{margin-top:12px;font-size:.7rem;color:var(--grey);font-style:italic}
   noscript .ann{margin-bottom:6px}
@@ -111,7 +117,7 @@
       <span class="chip" data-c="gsu2">GSU 25 #2</span>
     </div>
     <div class="ann ok" id="annA"><b>NORMAL</b>Two identical sensors, cross-comparing.</div>
-    <div class="ap" id="apA"><b>AP</b> · full flight director, coupled nav</div>
+    <div class="ap ok" id="apA"><b>AUTOPILOT</b>Full flight director, coupled nav</div>
   </div>
   <div class="arch">
     <h2><span>ARCH B</span>GSU 25 + G5</h2>
@@ -122,7 +128,7 @@
       <span class="chip g5" data-c="g5">G5</span>
     </div>
     <div class="ann ok" id="annB"><b>NORMAL</b>Dissimilar standby, watching independently.</div>
-    <div class="ap" id="apB"><b>AP</b> · full flight director, coupled nav</div>
+    <div class="ap ok" id="apB"><b>AUTOPILOT</b>Full flight director, coupled nav</div>
   </div>
 </div>
 
@@ -211,7 +217,12 @@
       else ap = 'pilot arbitrates source';
     }
 
-    return {dead:dead, lying:lying, cls:cls, t:t, d:d, ap:ap, apGold:apGold};
+    var apCls = 'warn';
+    if (apGold) apCls = 'gold';
+    else if (ap === 'unaffected' || ap === 'full flight director, coupled nav') apCls = 'ok';
+    else if (/^lost|following bad data|no valid attitude source/.test(ap)) apCls = 'bad';
+
+    return {dead:dead, lying:lying, cls:cls, t:t, d:d, ap:ap, apGold:apGold, apCls:apCls};
   }
 
   function render(){
@@ -226,8 +237,8 @@
       ann.className = 'ann '+st.cls;
       ann.innerHTML = '<b>'+st.t+'</b>'+st.d;
       var ap = document.getElementById('ap'+arch);
-      ap.className = 'ap' + (st.apGold ? ' gold' : '');
-      ap.innerHTML = '<b>AP</b> · '+st.ap;
+      ap.className = 'ap ' + st.apCls;
+      ap.innerHTML = '<b>AUTOPILOT</b>' + st.ap.charAt(0).toUpperCase() + st.ap.slice(1);
     });
   }
 
