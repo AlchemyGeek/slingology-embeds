@@ -1,0 +1,232 @@
+/* AirVenture 2026 Countdown Banner
+   Paste into: Appearance → Additional CSS  */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Instrument+Sans:wght@400;500;600&display=swap');
+
+.av-banner {
+  position: relative;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #e8e0d5;
+  border-radius: 3px;
+  overflow: hidden;
+  padding: 2.2rem 2.6rem 2rem;
+  box-sizing: border-box;
+  font-family: 'Instrument Sans', sans-serif;
+}
+
+.av-banner::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: #c8a45a;
+}
+
+.av-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.av-plane {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  animation: av-glide 4s ease-in-out infinite;
+  opacity: 0.9;
+}
+
+.av-plane svg {
+  width: 48px;
+  height: 48px;
+  animation: av-spin 2s linear infinite;
+  transform-origin: center;
+}
+
+@keyframes av-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+
+.av-label { flex: 1; min-width: 180px; }
+
+.av-eyebrow {
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #a07a38;
+  margin-bottom: 0.4rem;
+}
+
+.av-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #1a1612;
+  margin: 0;
+}
+
+.av-title em { color: #a07a38; font-style: italic; }
+
+.av-sub {
+  margin-top: 0.4rem;
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 0.72rem;
+  color: #8a7a68;
+  letter-spacing: 0.04em;
+}
+
+.av-countdown {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.av-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.av-box {
+  background: #f5f0ea;
+  border: 1px solid #e0d8cc;
+  border-radius: 2px;
+  width: 58px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.av-box::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 50%;
+  height: 1px;
+  background: rgba(0,0,0,0.08);
+}
+
+.av-digit {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.1rem;
+  font-weight: 600;
+  color: #1a1612;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.av-digit.av-flip { animation: av-flipIn 0.2s ease; }
+
+@keyframes av-flipIn {
+  0%   { opacity: 0; transform: translateY(-6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.av-lbl {
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8a7a68;
+}
+
+.av-sep {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #d0c4b4;
+  align-self: flex-start;
+  padding-top: 8px;
+  animation: av-blink 1s step-end infinite;
+}
+
+@keyframes av-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.2; }
+}
+
+.av-cta {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.av-cta a {
+  display: inline-block;
+  background: transparent;
+  color: #a07a38;
+  border: 1px solid #a07a38;
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: 0.65rem 1.4rem;
+  border-radius: 2px;
+  transition: background 0.18s, color 0.18s;
+  white-space: nowrap;
+}
+
+.av-cta a:hover { background: #a07a38; color: #ffffff; }
+
+.av-cta-sub {
+  font-family: 'Playfair Display', serif;
+  font-size: 1rem;
+  font-style: italic;
+  font-weight: 600;
+  color: #a07a38;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+
+.av-msg {
+  display: none;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.4rem;
+  font-weight: 600;
+  font-style: italic;
+  color: #a07a38;
+}
+
+.av-countdown {
+  justify-content: center;
+}
+
+.av-cta {
+  align-items: center;
+  text-align: center;
+}
+
+.av-inner {
+  justify-content: center;
+}
+
+@media (max-width: 660px) {
+  .av-banner  { padding: 1.8rem 1.4rem 1.6rem; }
+  .av-inner   { gap: 1.4rem; justify-content: center; text-align: center; }
+  .av-label   { flex: 0 0 100%; }
+  .av-cta     { flex: 0 0 100%; }
+  .av-box     { width: 50px; height: 50px; }
+  .av-digit   { font-size: 1.8rem; }
+  .av-title   { font-size: 1.5rem; }
+}
