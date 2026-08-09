@@ -190,13 +190,14 @@ function evalPath(segs, pct) {
   return segs[segs.length - 1].fn(1);
 }
 
-const CONFLICT_START = 65, CONFLICT_END = 70;
+const CONFLICT_START = 31, CONFLICT_END = 48;
 
 const statusRanges = [
   { t0: 0, t1: 15, text: 'N117ZS joins downwind for 29 via the 45.' },
-  { t0: 15, t1: 35, text: 'N117ZS established on downwind for 29, IFR traffic continuing the approach.' },
-  { t0: 35, t1: 65, text: 'N117ZS turning through the 360 for spacing — IFR still inbound on the approach.' },
-  { t0: 65, t1: 70, text: 'Conflict window — IFR traffic goes missed just short of 34 and climbs into the same airspace as N117ZS finishing the turn.' },
+  { t0: 15, t1: 31, text: 'N117ZS established on downwind for 29, IFR traffic continuing the approach.' },
+  { t0: 31, t1: 48, text: 'Conflict window — N117ZS begins the 360 right as IFR traffic on the approach passes closest to the turn.' },
+  { t0: 48, t1: 65, text: 'N117ZS continuing the 360 for spacing — IFR still inbound on the approach.' },
+  { t0: 65, t1: 70, text: 'IFR traffic goes missed just short of 34 and starts the climb-out.' },
   { t0: 70, t1: 80, text: 'N117ZS rolls out on downwind, exactly where it left off.' },
   { t0: 80, t1: 90, text: 'N117ZS turns base for 29.' },
   { t0: 90, t1: 100, text: 'N117ZS on final for 29.' }
