@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KAWO Pattern Conflict — Interactive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<style>
+  :root{
+    --gold:#b8922a;
+    --dark:#2b2a26;
+    --grass:#eef1e8;
+    --grass-edge:#dfe3d4;
+    --rwy:#8d8c86;
+    --rwy-edge:#6f6e69;
+    --downwind:#3a6ea5;
+    --missed:#b8465a;
+    --text-gray:#5f5e5a;
+  }
+  html,body{margin:0;padding:0;background:#fff;font-family:'Instrument Sans',Arial,sans-serif;}
+  .wrap{max-width:680px;margin:0 auto;padding:16px;box-sizing:border-box;}
+  h2{font-family:'Playfair Display',Georgia,serif;font-size:20px;color:var(--dark);margin:0 0 4px;}
+  .status{font-size:13px;color:var(--text-gray);min-height:18px;margin-bottom:10px;}
+  .stage-wrap{position:relative;width:100%;background:var(--grass);border:1.5px solid var(--grass-edge);border-radius:10px;overflow:hidden;}
+  svg{display:block;width:100%;height:auto;}
+  .controls{display:flex;align-items:center;gap:10px;margin-top:12px;}
+  button{
+    border:1.5px solid var(--dark);
+    background:#fff;
+    color:var(--dark);
+    font-family:'Instrument Sans',Arial,sans-serif;
+    font-size:13px;
+    font-weight:600;
+    border-radius:6px;
+    padding:7px 14px;
+    cursor:pointer;
+  }
+  button:hover{background:var(--dark);color:#fff;}
+  .slider-col{flex:1;position:relative;}
+  input[type=range]{
+    -webkit-appearance:none;
+    width:100%;
+    height:6px;
+    border-radius:3px;
+    background:transparent;
+    position:relative;
+    z-index:2;
+    margin:0;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:transparent;}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:16px;height:16px;border-radius:50%;
+    background:var(--dark);
+    border:2px solid #fff;
+    box-shadow:0 0 0 1px var(--dark);
+    margin-top:-5px;
+    cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:16px;height:16px;border-radius:50%;
+    background:var(--dark);border:2px solid #fff;
+    box-shadow:0 0 0 1px var(--dark);cursor:pointer;
+  }
+  .track-bg{
+    position:absolute;
+    left:0;right:0;top:50%;
+    transform:translateY(-50%);
+    height:6px;
+    border-radius:3px;
+    background:#e2e0d5;
+    z-index:1;
+  }
+  .conflict-band{
+    position:absolute;
+    top:0;bottom:0;
+    background:rgba(184,70,90,0.35);
+    border-radius:3px;
+  }
+  .legend{display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--text-gray);flex-wrap:wrap;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .swatch{width:14px;height:14px;border-radius:50%;display:inline-block;}
+  .time-readout{font-size:12px;color:var(--text-gray);min-width:80px;text-align:right;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>Two runways, one wind — the conflict in motion</h2>
+  <div class="status" id="status">Drag the slider or press play to run the sequence.</div>
+
+  <div class="stage-wrap">
+    <svg id="scene" viewBox="0 0 1040 980" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="627.5,576.3 608.7,583.2 492.5,263.7 511.3,256.8" fill="var(--rwy)" stroke="var(--rwy-edge)" stroke-width="1.5"/>
+      <line x1="618.4" y1="573.1" x2="501.9" y2="266.9" stroke="#f4f1e6" stroke-width="2" stroke-dasharray="10,8"/>
+      <polygon points="670.6,452.3 665.5,466.4 449.4,387.7 454.5,373.6" fill="var(--rwy)" stroke="var(--rwy-edge)" stroke-width="1.5"/>
+      <line x1="666.6" y1="461.6" x2="453.4" y2="378.4" stroke="#f4f1e6" stroke-width="2" stroke-dasharray="8,7"/>
+
+      <text x="648" y="609.7" font-size="16" font-weight="700" fill="var(--dark)" text-anchor="middle">34</text>
+      <text x="525.9" y="236.3" font-size="16" font-weight="700" fill="var(--dark)" text-anchor="middle">16</text>
+      <text x="690" y="481.3" font-size="16" font-weight="700" fill="var(--dark)" text-anchor="middle">29</text>
+      <text x="429.9" y="358.7" font-size="16" font-weight="700" fill="var(--dark)" text-anchor="middle">11</text>
+
+      <path d="M198.9 662.5 L380.1 578.0 L737.2 708 L809 510.6 L668.1 459.3"
+            fill="none" stroke="var(--downwind)" stroke-width="2" opacity="0.35"/>
+      <circle cx="577.4" cy="708.4" r="55" fill="none" stroke="var(--gold)" stroke-width="2" stroke-dasharray="2,7" opacity="0.45"/>
+
+      <line x1="678" y1="744.2" x2="633.5" y2="622" stroke="var(--missed)" stroke-width="2" opacity="0.3"/>
+      <line x1="633.5" y1="622" x2="539.5" y2="363.6" stroke="var(--missed)" stroke-width="2" stroke-dasharray="9,6" opacity="0.3"/>
+      <circle cx="633.5" cy="622" r="6" fill="none" stroke="var(--missed)" stroke-width="2" opacity="0.6"/>
+
+      <g id="ifr-plane">
+        <path d="M0,-10 L1.5,-6 L8,-1 L8,1 L1.5,-1 L1.5,4 L4,7 L4,8.5 L0,7 L-4,8.5 L-4,7 L-1.5,4 L-1.5,-1 L-8,1 L-8,-1 L-1.5,-6 Z" fill="var(--missed)"/>
+      </g>
+      <g id="own-plane">
+        <path d="M0,-10 L1.5,-6 L8,-1 L8,1 L1.5,-1 L1.5,4 L4,7 L4,8.5 L0,7 L-4,8.5 L-4,7 L-1.5,4 L-1.5,-1 L-8,1 L-8,-1 L-1.5,-6 Z" fill="var(--gold)"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="controls">
+    <button id="playBtn">Pause</button>
+    <div class="slider-col">
+      <div class="track-bg">
+        <div class="conflict-band" id="conflictBand"></div>
+      </div>
+      <input type="range" id="scrub" min="0" max="100" value="0" step="0.1">
+    </div>
+    <div class="time-readout" id="timeReadout">0:00 / 3:00</div>
+  </div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:var(--missed)"></span>IFR traffic, runway 34</span>
+    <span><span class="swatch" style="background:var(--gold)"></span>N117ZS, runway 29</span>
+    <span><span class="swatch" style="background:rgba(184,70,90,0.5)"></span>Conflict window</span>
+  </div>
+</div>
+
+<script>
+function pt(cx, cy, headingDeg, dist) {
+  const rad = headingDeg * Math.PI / 180;
+  return [cx + dist * Math.sin(rad), cy - dist * Math.cos(rad)];
+}
+
+const THR29 = [668.06, 459.33];
+const DOWNWIND_ENTRY = [239.16, 526.70];
+const BASE_TURN = [737.19, 707.97], FINAL_TURN = [809.02, 510.64];
+const ABEAM29 = [596.24, 656.67];
+const ENTRY_START = [198.85, 662.53];
+const JOIN_POINT = [380.11, 578.00];
+const LOOP_CENTER = [577.43, 708.35], LOOP_R = 55;
+const APPROACH_START = [677.997, 744.194], MISSED_POINT = [633.53, 622.03], MISSED_CLIMB_END = [539.48, 363.62];
+const LOOP_H0 = 20;
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function linePos(p0, p1, t) {
+  const x = lerp(p0[0], p1[0], t), y = lerp(p0[1], p1[1], t);
+  const heading = Math.atan2(p1[0] - p0[0], -(p1[1] - p0[1])) * 180 / Math.PI;
+  return { x, y, heading };
+}
+
+function arcPos(center, r, h0, t) {
+  const h = h0 + 360 * t;
+  const [x, y] = pt(center[0], center[1], h, r);
+  return { x, y, heading: h + 90 };
+}
+
+const ifrSegs = [
+  { t0: 0, t1: 65, fn: t => linePos(APPROACH_START, MISSED_POINT, t) },
+  { t0: 65, t1: 100, fn: t => linePos(MISSED_POINT, MISSED_CLIMB_END, t) }
+];
+
+const ownSegs = [
+  { t0: 0, t1: 15, fn: t => linePos(ENTRY_START, JOIN_POINT, t) },
+  { t0: 15, t1: 35, fn: t => linePos(JOIN_POINT, ABEAM29, t) },
+  { t0: 35, t1: 70, fn: t => arcPos(LOOP_CENTER, LOOP_R, LOOP_H0, t) },
+  { t0: 70, t1: 80, fn: t => linePos(ABEAM29, BASE_TURN, t) },
+  { t0: 80, t1: 90, fn: t => linePos(BASE_TURN, FINAL_TURN, t) },
+  { t0: 90, t1: 100, fn: t => linePos(FINAL_TURN, THR29, t) }
+];
+
+function evalPath(segs, pct) {
+  for (const seg of segs) {
+    if (pct >= seg.t0 && pct <= seg.t1) {
+      const local = (pct - seg.t0) / (seg.t1 - seg.t0);
+      return seg.fn(local);
+    }
+  }
+  return segs[segs.length - 1].fn(1);
+}
+
+const CONFLICT_START = 65, CONFLICT_END = 70;
+
+const statusRanges = [
+  { t0: 0, t1: 15, text: 'N117ZS joins downwind for 29 via the 45.' },
+  { t0: 15, t1: 35, text: 'N117ZS established on downwind for 29, IFR traffic continuing the approach.' },
+  { t0: 35, t1: 65, text: 'N117ZS turning through the 360 for spacing — IFR still inbound on the approach.' },
+  { t0: 65, t1: 70, text: 'Conflict window — IFR traffic goes missed just short of 34 and climbs into the same airspace as N117ZS finishing the turn.' },
+  { t0: 70, t1: 80, text: 'N117ZS rolls out on downwind, exactly where it left off.' },
+  { t0: 80, t1: 90, text: 'N117ZS turns base for 29.' },
+  { t0: 90, t1: 100, text: 'N117ZS on final for 29.' }
+];
+
+const svg = document.getElementById('scene');
+const ifrPlane = document.getElementById('ifr-plane');
+const ownPlane = document.getElementById('own-plane');
+const scrub = document.getElementById('scrub');
+const statusEl = document.getElementById('status');
+const timeEl = document.getElementById('timeReadout');
+const conflictBand = document.getElementById('conflictBand');
+const playBtn = document.getElementById('playBtn');
+
+conflictBand.style.left = CONFLICT_START + '%';
+conflictBand.style.width = (CONFLICT_END - CONFLICT_START) + '%';
+
+function render(pct) {
+  const ifr = evalPath(ifrSegs, pct);
+  const own = evalPath(ownSegs, pct);
+  ifrPlane.setAttribute('transform', `translate(${ifr.x} ${ifr.y}) rotate(${ifr.heading})`);
+  ownPlane.setAttribute('transform', `translate(${own.x} ${own.y}) rotate(${own.heading})`);
+
+  const totalSeconds = 180;
+  const elapsed = Math.round(totalSeconds * pct / 100);
+  const mm = Math.floor(elapsed / 60), ss = String(elapsed % 60).padStart(2, '0');
+  timeEl.textContent = `${mm}:${ss} / 3:00`;
+
+  const stage = statusRanges.find(r => pct >= r.t0 && pct <= r.t1) || statusRanges[statusRanges.length - 1];
+  statusEl.textContent = stage.text;
+
+  svg.style.filter = (pct >= CONFLICT_START && pct <= CONFLICT_END) ? 'drop-shadow(0 0 0 transparent)' : 'none';
+}
+
+let playing = false, rafId = null, lastTime = null;
+const DURATION_MS = 25000;
+
+function step() {
+  if (!playing) return;
+  const now = Date.now();
+  if (lastTime === null) lastTime = now;
+  const dt = now - lastTime;
+  lastTime = now;
+  let val = parseFloat(scrub.value) + (dt / DURATION_MS) * 100;
+  if (val >= 100) {
+    val = 100;
+    playing = false;
+    playBtn.textContent = 'Play';
+  }
+  scrub.value = val;
+  render(val);
+}
+
+playBtn.addEventListener('click', () => {
+  if (playing) {
+    playing = false;
+    playBtn.textContent = 'Play';
+  } else {
+    if (parseFloat(scrub.value) >= 100) scrub.value = 0;
+    playing = true;
+    lastTime = null;
+    playBtn.textContent = 'Pause';
+  }
+});
+
+scrub.addEventListener('input', () => {
+  playing = false;
+  playBtn.textContent = 'Play';
+  render(parseFloat(scrub.value));
+});
+
+render(0);
+
+function startPlaying() {
+  playing = true;
+  lastTime = null;
+  playBtn.textContent = 'Pause';
+}
+
+setInterval(step, 50);
+startPlaying();
+</script>
+</body>
+</html>
