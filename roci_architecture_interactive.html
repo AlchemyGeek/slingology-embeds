@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roci Panel Architecture — Interactive</title>
+<style>
+  :root{
+    --gold:#b8922a; --gold-fill:#f3ead0; --dark:#2b2b2b; --grey:#8a8a8a;
+    --grey-fill:#f2f2f2; --can-blue:#4a6fa5; --can-fill:#e4eaf3;
+    --arinc-grey:#6b6b6b; --adsb-green:#4a7a5c; --adsb-fill:#e2eee6;
+    --red:#a3372f; --muted-gold:#c9b077;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:0; background:#ffffff;
+    font-family:-apple-system,"Instrument Sans",Helvetica,Arial,sans-serif;
+    color:var(--dark);
+  }
+  .wrap{max-width:900px; margin:0 auto; padding:18px 14px 28px;}
+  .controls{
+    display:flex; flex-wrap:wrap; gap:22px; align-items:center; justify-content:center;
+    margin-bottom:18px; padding:14px 16px; background:#faf8f3; border:1px solid #eee0bd;
+    border-radius:10px;
+  }
+  .control-group{display:flex; align-items:center; gap:10px;}
+  .control-label{font-size:13px; font-weight:700; color:var(--dark);}
+  .seg{display:inline-flex; border:1.5px solid #cfc4a3; border-radius:8px; overflow:hidden;}
+  .seg button{
+    border:none; background:#fff; padding:7px 14px; font-size:13px; font-weight:600;
+    color:var(--dark); cursor:pointer; transition:background .15s, color .15s;
+  }
+  .seg button + button{border-left:1.5px solid #cfc4a3;}
+  .seg button.active{background:var(--gold); color:#fff;}
+  .seg button.active.gad-off{background:var(--red);}
+  svg{width:100%; height:auto; display:block;}
+  .box-title{font-weight:700; font-size:14px;}
+  .box-sub{font-size:10.5px; fill:var(--grey);}
+  .bus-label{font-size:11.5px; font-style:italic;}
+  .callout{font-size:11px; font-style:italic; font-weight:700;}
+  .status-note{
+    text-align:center; font-size:13px; margin-top:10px; padding:9px 14px;
+    border-radius:8px; font-weight:600; transition:all .2s;
+  }
+  .status-ok{background:#eef4ee; color:#3d6b4a; border:1px solid #cfe3d2;}
+  .status-warn{background:#f7e9e6; color:var(--red); border:1px solid #e6c3bb;}
+  .legend{
+    display:flex; flex-wrap:wrap; gap:8px 20px; justify-content:center;
+    margin-top:14px; font-size:11.5px; color:var(--dark);
+  }
+  .legend-item{display:flex; align-items:center; gap:6px;}
+  .swatch{width:22px; height:0; border-top:2.6px solid; display:inline-block;}
+  .swatch.dashed{border-top-style:dashed;}
+  .swatch.dotted{border-top-style:dotted; border-top-width:3px;}
+  figcaption{text-align:center; font-size:12px; color:var(--grey); margin-top:14px;}
+  .enlarge-link{
+    display:none; text-align:center; margin-top:10px;
+  }
+  .enlarge-link a{
+    display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700;
+    color:#8a6a1f; text-decoration:none; padding:8px 16px; border:1.5px solid var(--gold);
+    border-radius:20px; background:#faf3e2;
+  }
+  @media (max-width: 640px){
+    .enlarge-link{display:block;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="controls">
+    <div class="control-group">
+      <span class="control-label">Displays</span>
+      <div class="seg" id="displaySeg">
+        <button data-val="g3x" class="active">G3X Touch</button>
+        <button data-val="axis">AXIS</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <span class="control-label">GAD 29</span>
+      <div class="seg" id="gadSeg">
+        <button data-val="on" class="active">Installed</button>
+        <button data-val="off">Removed</button>
+      </div>
+    </div>
+  </div>
+
+  <svg viewBox="0 0 1160 620" xmlns="http://www.w3.org/2000/svg">
+
+    <!-- ===== CAN bus backbone ===== -->
+    <line x1="90" y1="360" x2="1100" y2="360" stroke="var(--can-blue)" stroke-width="2.6" stroke-dasharray="1.5,4"/>
+    <text x="330" y="345" class="bus-label" fill="var(--can-blue)" text-anchor="middle">CAN bus — displays, sensors, GAD 29, G5, GMC 507, servos</text>
+
+    <!-- CAN drops to sensor row -->
+    <line x1="150" y1="360" x2="150" y2="405" stroke="var(--can-blue)" stroke-width="2.6" stroke-dasharray="1.5,4"/>
+    <line x1="300" y1="360" x2="300" y2="405" stroke="var(--can-blue)" stroke-width="2.6" stroke-dasharray="1.5,4"/>
+    <line x1="450" y1="360" x2="450" y2="405" stroke="var(--can-blue)" stroke-width="2.6" stroke-dasharray="1.5,4"/>
+    <line id="canDropGad" x1="600" y1="360" x2="600" y2="405" stroke="var(--can-blue)" stroke-width="2.6" stroke-dasharray="1.5,4"/>
+    <line x1="750" y1="360" x2="750" y2="405" stroke="var(--can-blue)" stroke-width="2.6" stroke-dasharray="1.5,4"/>
+    <line x1="900" y1="360" x2="900" y2="405" stroke="var(--can-blue)" stroke-width="2.6" stroke-dasharray="1.5,4"/>
+    <!-- GSA 28 independent drop, its own column -->
+    <line x1="1040" y1="360" x2="1040" y2="405" stroke="var(--can-blue)" stroke-width="2.6" stroke-dasharray="1.5,4"/>
+
+    <!-- CAN drops up to displays -->
+    <line x1="150" y1="360" x2="150" y2="145" stroke="var(--can-blue)" stroke-width="2.6" stroke-dasharray="1.5,4"/>
+    <line x1="330" y1="360" x2="330" y2="145" stroke="var(--can-blue)" stroke-width="2.6" stroke-dasharray="1.5,4"/>
+
+    <!-- ===== Displays ===== -->
+    <g id="mfdBox">
+      <rect x="70" y="65" width="160" height="80" rx="8" fill="var(--grey-fill)" stroke="var(--grey)" stroke-width="1.8"/>
+      <text x="150" y="102" text-anchor="middle" class="box-title" id="mfdTitle">GDU 460</text>
+      <text x="150" y="120" text-anchor="middle" class="box-sub" id="mfdSub">MFD (G3X Touch)</text>
+    </g>
+    <g id="pfdBox">
+      <rect x="250" y="65" width="160" height="80" rx="8" fill="var(--grey-fill)" stroke="var(--grey)" stroke-width="1.8"/>
+      <text x="330" y="102" text-anchor="middle" class="box-title" id="pfdTitle">GDU 460</text>
+      <text x="330" y="120" text-anchor="middle" class="box-sub" id="pfdSub">PFD (G3X Touch)</text>
+    </g>
+
+    <!-- ===== GTN 650Xi ===== -->
+    <rect x="590" y="65" width="150" height="80" rx="8" fill="var(--gold-fill)" stroke="var(--gold)" stroke-width="1.8"/>
+    <text x="665" y="102" text-anchor="middle" class="box-title">GTN 650Xi</text>
+    <text x="665" y="120" text-anchor="middle" class="box-sub">IFR navigator</text>
+
+    <!-- ===== GTX 45R ===== -->
+    <rect x="860" y="65" width="150" height="80" rx="8" fill="var(--adsb-fill)" stroke="var(--adsb-green)" stroke-width="1.8"/>
+    <text x="935" y="102" text-anchor="middle" class="box-title">GTX 45R</text>
+    <text x="935" y="120" text-anchor="middle" class="box-sub">ADS-B transponder</text>
+    <line x1="860" y1="105" x2="740" y2="105" stroke="var(--adsb-green)" stroke-width="1.8" stroke-dasharray="4,4"/>
+    <text x="800" y="60" text-anchor="middle" class="bus-label" fill="var(--adsb-green)" font-size="10.5">HSDB/RS-232 (feeds ROA)</text>
+
+    <!-- ===== Displays <-> GTN link (HSDB or no-bus) — attaches to PFD per install priority ===== -->
+    <line id="hsdbLine1" x1="410" y1="105" x2="590" y2="105" stroke="var(--gold)" stroke-width="3.4"/>
+    <text id="hsdbLabel" x="500" y="45" text-anchor="middle" class="bus-label" fill="#8a6a1f">No shared bus — manual round trip</text>
+
+    <!-- PFD <-> MFD direct interconnect (required per install rules) -->
+    <line id="pfdMfdLine" x1="230" y1="130" x2="250" y2="130" stroke="var(--gold)" stroke-width="3.4"/>
+    <text id="pfdMfdLabel" x="240" y="178" text-anchor="middle" class="bus-label" font-size="9.5" fill="#8a6a1f">direct link</text>
+
+    <!-- ===== ARINC 429: GTN -> GAD 29 (dedicated link, elbow) ===== -->
+    <line id="arincV1" x1="665" y1="145" x2="665" y2="215" stroke="var(--arinc-grey)" stroke-width="1.8" stroke-dasharray="7,4"/>
+    <line id="arincH" x1="665" y1="215" x2="600" y2="215" stroke="var(--arinc-grey)" stroke-width="1.8" stroke-dasharray="7,4"/>
+    <line id="arincV2" x1="600" y1="215" x2="600" y2="360" stroke="var(--arinc-grey)" stroke-width="1.8" stroke-dasharray="7,4"/>
+    <text x="695" y="185" class="bus-label" fill="var(--arinc-grey)" font-size="10.5">ARINC 429 — dedicated link</text>
+    <text x="695" y="200" class="bus-label" fill="var(--arinc-grey)" font-size="10.5">(GPS / VHF NAV / air data)</text>
+    <text x="695" y="215" class="bus-label" fill="var(--arinc-grey)" font-size="10.5">GTN is NOT on the CAN bus</text>
+    <!-- X mark shown when GAD 29 removed, breaking this link -->
+    <g id="arincBreak" style="display:none;">
+      <line x1="618" y1="230" x2="638" y2="250" stroke="var(--red)" stroke-width="3.4" stroke-linecap="round"/>
+      <line x1="638" y1="230" x2="618" y2="250" stroke="var(--red)" stroke-width="3.4" stroke-linecap="round"/>
+    </g>
+
+    <!-- ===== Sensor / bus row boxes ===== -->
+    <g>
+      <rect x="90" y="405" width="120" height="65" rx="7" fill="var(--can-fill)" stroke="var(--can-blue)" stroke-width="1.6"/>
+      <text x="150" y="432" text-anchor="middle" class="box-title" font-size="12.5">GSU 25</text>
+      <text x="150" y="448" text-anchor="middle" class="box-sub">ADAHRS</text>
+    </g>
+    <g>
+      <rect x="240" y="405" width="120" height="65" rx="7" fill="var(--can-fill)" stroke="var(--can-blue)" stroke-width="1.6"/>
+      <text x="300" y="432" text-anchor="middle" class="box-title" font-size="12.5">GMU 44</text>
+      <text x="300" y="448" text-anchor="middle" class="box-sub">magnetometer</text>
+    </g>
+    <g>
+      <rect x="390" y="405" width="120" height="65" rx="7" fill="var(--can-fill)" stroke="var(--can-blue)" stroke-width="1.6"/>
+      <text x="450" y="432" text-anchor="middle" class="box-title" font-size="12.5">GEA 24</text>
+      <text x="450" y="448" text-anchor="middle" class="box-sub">engine/airframe</text>
+    </g>
+
+    <!-- GAD 29 box -->
+    <g id="gadBox">
+      <rect id="gadRect" x="540" y="405" width="120" height="65" rx="7" fill="var(--can-fill)" stroke="var(--can-blue)" stroke-width="1.6"/>
+      <text id="gadTitle" x="600" y="432" text-anchor="middle" class="box-title" font-size="12.5">GAD 29</text>
+      <text id="gadSub" x="600" y="448" text-anchor="middle" class="box-sub">ARINC 429 adapter</text>
+    </g>
+
+    <!-- G5 box -->
+    <g>
+      <rect id="g5Rect" x="690" y="405" width="120" height="65" rx="7" fill="var(--can-fill)" stroke="var(--can-blue)" stroke-width="1.6"/>
+      <text x="750" y="432" text-anchor="middle" class="box-title" font-size="12.5">G5</text>
+      <text x="750" y="448" text-anchor="middle" class="box-sub">standby ADI</text>
+    </g>
+
+    <!-- GMC 507 -->
+    <g>
+      <rect x="840" y="405" width="120" height="65" rx="7" fill="var(--can-fill)" stroke="var(--can-blue)" stroke-width="1.6"/>
+      <text x="900" y="432" text-anchor="middle" class="box-title" font-size="12.5">GMC 507</text>
+      <text x="900" y="448" text-anchor="middle" class="box-sub">mode controller</text>
+    </g>
+
+    <!-- GSA 28, independent CAN drop -->
+    <g>
+      <rect x="980" y="405" width="120" height="65" rx="7" fill="var(--can-fill)" stroke="var(--can-blue)" stroke-width="1.6"/>
+      <text x="1040" y="432" text-anchor="middle" class="box-title" font-size="12.5">GSA 28 x3</text>
+      <text x="1040" y="448" text-anchor="middle" class="box-sub">roll / pitch / trim</text>
+    </g>
+
+    <!-- Redundancy path GAD29 -> G5 -->
+    <g id="redundancyArc">
+      <path d="M 620 405 C 650 355, 700 355, 730 405" fill="none" stroke="var(--red)" stroke-width="2.4" marker-end="url(#arrowRed)"/>
+      <text x="675" y="392" text-anchor="middle" class="callout" fill="var(--red)">GTN GPS/NAV data</text>
+    </g>
+    <g id="redundancyBroken" style="display:none;">
+      <path d="M 620 405 C 650 355, 700 355, 730 405" fill="none" stroke="var(--red)" stroke-width="2.4" stroke-dasharray="3,5" opacity="0.55"/>
+      <text x="675" y="392" text-anchor="middle" class="callout" fill="var(--red)">no path — G5 attitude only</text>
+    </g>
+
+    <defs>
+      <marker id="arrowRed" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="var(--red)"/>
+      </marker>
+    </defs>
+
+  </svg>
+
+  <div class="status-note" id="statusNote">G5 receives GTN GPS/NAV data via GAD 29 — full redundancy in IMC.</div>
+
+  <div class="enlarge-link">
+    <a href="roci_architecture_interactive.html" target="_blank" rel="noopener">🔍 Tap to enlarge &amp; pinch-zoom</a>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="swatch" style="border-color:var(--gold)"></span>HSDB (Ethernet) — flight plan sync</div>
+    <div class="legend-item"><span class="swatch dashed" style="border-color:var(--muted-gold)"></span>No bus — manual round trip (G3X only)</div>
+    <div class="legend-item"><span class="swatch dashed" style="border-color:var(--arinc-grey)"></span>ARINC 429 — GTN → GAD 29</div>
+    <div class="legend-item"><span class="swatch dotted" style="border-color:var(--can-blue)"></span>CAN bus — shared network</div>
+    <div class="legend-item"><span class="swatch" style="border-color:var(--red)"></span>Redundancy path — GAD 29 → G5</div>
+  </div>
+
+  <figcaption>Click the toggles above to see how Roci's panel wiring changes with each configuration.</figcaption>
+
+</div>
+
+<script>
+(function(){
+  var state = { display: 'g3x', gad: 'on' };
+
+  var displayBtns = document.querySelectorAll('#displaySeg button');
+  var gadBtns = document.querySelectorAll('#gadSeg button');
+
+  displayBtns.forEach(function(b){
+    b.addEventListener('click', function(){
+      state.display = b.dataset.val;
+      displayBtns.forEach(function(x){x.classList.remove('active');});
+      b.classList.add('active');
+      render();
+    });
+  });
+  gadBtns.forEach(function(b){
+    b.addEventListener('click', function(){
+      state.gad = b.dataset.val;
+      gadBtns.forEach(function(x){x.classList.remove('active','gad-off');});
+      b.classList.add('active');
+      if (b.dataset.val === 'off') b.classList.add('gad-off');
+      render();
+    });
+  });
+
+  function render(){
+    var isAxis = state.display === 'axis';
+    var gadOn = state.gad === 'on';
+
+    // Displays
+    var pfdTitle = document.getElementById('pfdTitle');
+    var mfdTitle = document.getElementById('mfdTitle');
+    var pfdSub = document.getElementById('pfdSub');
+    var mfdSub = document.getElementById('mfdSub');
+    var pfdBox = document.getElementById('pfdBox').querySelector('rect');
+    var mfdBox = document.getElementById('mfdBox').querySelector('rect');
+
+    pfdTitle.textContent = isAxis ? 'GDU 116BX' : 'GDU 460';
+    mfdTitle.textContent = isAxis ? 'GDU 116BX' : 'GDU 460';
+    pfdSub.textContent = isAxis ? 'PFD (AXIS)' : 'PFD (G3X Touch)';
+    mfdSub.textContent = isAxis ? 'MFD (AXIS)' : 'MFD (G3X Touch)';
+    var goldFill = getComputedStyle(document.documentElement).getPropertyValue('--gold-fill');
+    var greyFill = getComputedStyle(document.documentElement).getPropertyValue('--grey-fill');
+    var gold = getComputedStyle(document.documentElement).getPropertyValue('--gold');
+    var grey = getComputedStyle(document.documentElement).getPropertyValue('--grey');
+    [pfdBox, mfdBox].forEach(function(r){
+      r.setAttribute('fill', isAxis ? goldFill : greyFill);
+      r.setAttribute('stroke', isAxis ? gold : grey);
+    });
+
+    // HSDB / no-bus link (GTN <-> PFD) and PFD <-> MFD direct interconnect
+    var hsdbLine = document.getElementById('hsdbLine1');
+    var hsdbLabel = document.getElementById('hsdbLabel');
+    var pfdMfdLine = document.getElementById('pfdMfdLine');
+    var pfdMfdLabel = document.getElementById('pfdMfdLabel');
+    var mutedGold = getComputedStyle(document.documentElement).getPropertyValue('--muted-gold');
+    var canBlueEarly = getComputedStyle(document.documentElement).getPropertyValue('--can-blue');
+    if (isAxis){
+      hsdbLine.setAttribute('stroke', gold);
+      hsdbLine.setAttribute('stroke-width', '3.4');
+      hsdbLine.removeAttribute('stroke-dasharray');
+      hsdbLabel.textContent = 'HSDB (Ethernet) — full flight plan sync';
+      hsdbLabel.setAttribute('fill', '#8a6a1f');
+
+      pfdMfdLine.setAttribute('stroke', gold);
+      pfdMfdLine.setAttribute('stroke-width', '3.4');
+      pfdMfdLine.removeAttribute('stroke-dasharray');
+      pfdMfdLabel.textContent = 'HSDB link';
+      pfdMfdLabel.setAttribute('fill', '#8a6a1f');
+    } else {
+      hsdbLine.setAttribute('stroke', mutedGold);
+      hsdbLine.setAttribute('stroke-width', '1.8');
+      hsdbLine.setAttribute('stroke-dasharray', '4,5');
+      hsdbLabel.textContent = 'No shared bus — manual round trip (switch to internal GPS mode)';
+      hsdbLabel.setAttribute('fill', '#a08a55');
+
+      pfdMfdLine.setAttribute('stroke', canBlueEarly);
+      pfdMfdLine.setAttribute('stroke-width', '2.6');
+      pfdMfdLine.setAttribute('stroke-dasharray', '1.5,4');
+      pfdMfdLabel.textContent = 'display link';
+      pfdMfdLabel.setAttribute('fill', canBlueEarly);
+    }
+
+    // GAD 29 box + ARINC link + redundancy path
+    var gadRect = document.getElementById('gadRect');
+    var gadTitle = document.getElementById('gadTitle');
+    var gadSub = document.getElementById('gadSub');
+    var g5Rect = document.getElementById('g5Rect');
+    var arincV1 = document.getElementById('arincV1');
+    var arincH = document.getElementById('arincH');
+    var arincV2 = document.getElementById('arincV2');
+    var arincBreak = document.getElementById('arincBreak');
+    var canDropGad = document.getElementById('canDropGad');
+    var redundancyArc = document.getElementById('redundancyArc');
+    var redundancyBroken = document.getElementById('redundancyBroken');
+    var statusNote = document.getElementById('statusNote');
+    var red = getComputedStyle(document.documentElement).getPropertyValue('--red');
+    var canBlue = getComputedStyle(document.documentElement).getPropertyValue('--can-blue');
+    var canFill = getComputedStyle(document.documentElement).getPropertyValue('--can-fill');
+
+    if (gadOn){
+      gadRect.setAttribute('fill', canFill);
+      gadRect.setAttribute('stroke', canBlue);
+      gadRect.removeAttribute('stroke-dasharray');
+      gadTitle.setAttribute('opacity', '1');
+      gadSub.setAttribute('opacity', '1');
+      gadSub.textContent = 'ARINC 429 adapter';
+      [arincV1, arincH, arincV2].forEach(function(l){ l.setAttribute('opacity','1'); });
+      arincBreak.style.display = 'none';
+      g5Rect.setAttribute('stroke', canBlue);
+      g5Rect.setAttribute('fill', canFill);
+      redundancyArc.style.display = 'block';
+      redundancyBroken.style.display = 'none';
+      statusNote.textContent = 'G5 receives GTN GPS/NAV data via GAD 29 — full redundancy in IMC.';
+      statusNote.className = 'status-note status-ok';
+    } else {
+      gadRect.setAttribute('fill', '#f2f2f2');
+      gadRect.setAttribute('stroke', '#bbbbbb');
+      gadRect.setAttribute('stroke-dasharray', '5,4');
+      gadTitle.setAttribute('opacity', '0.4');
+      gadSub.setAttribute('opacity', '0.4');
+      gadSub.textContent = 'removed';
+      [arincV1, arincH].forEach(function(l){ l.setAttribute('opacity','0.25'); });
+      arincV2.setAttribute('opacity', '0');
+      arincBreak.style.display = 'block';
+      g5Rect.setAttribute('stroke', red);
+      g5Rect.setAttribute('fill', '#f7e9e6');
+      redundancyArc.style.display = 'none';
+      redundancyBroken.style.display = 'block';
+      statusNote.textContent = 'GAD 29 removed: the GTN\u2019s ARINC 429 output has nowhere to plug in. G5 falls back to attitude-only \u2014 no external GPS/NAV backup if the display fails in IMC.';
+      statusNote.className = 'status-note status-warn';
+    }
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
