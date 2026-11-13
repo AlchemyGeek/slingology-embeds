@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>N117ZS Governor Hunting Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* layout: instrument panel. charts left, mechanism right, controls below, evidence last */
+  --bg:#f3f5f6; --panel:#ffffff; --ink:#14212b; --ink2:#51626f; --line:#d5dce1;
+  --accent:#0b6e8f; --accent-soft:#dcecf2;
+  --hold:#8b98a3; --fine:#c77a0a; --coarse:#2b62c4; --fast:#c2342f; --ramp:#f1e7c9;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#10171c; --panel:#18222a; --ink:#e6edf1; --ink2:#9bacb8; --line:#2c3a45;
+    --accent:#58b9d8; --accent-soft:#17323d;
+    --hold:#73828e; --fine:#e3a13a; --coarse:#6b9cf0; --fast:#ee6a63; --ramp:#3a3420;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#10171c; --panel:#18222a; --ink:#e6edf1; --ink2:#9bacb8; --line:#2c3a45;
+  --accent:#58b9d8; --accent-soft:#17323d;
+  --hold:#73828e; --fine:#e3a13a; --coarse:#6b9cf0; --fast:#ee6a63; --ramp:#3a3420;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 48px;display:flex;flex-direction:column;gap:16px}
+header h1{font-size:22px;font-weight:600;margin:0 0 4px;text-wrap:balance}
+header p{margin:0;color:var(--ink2);max-width:70ch}
+.note{display:inline-block;margin-top:10px;padding:4px 10px;border:1px solid var(--line);border-radius:4px;font-size:13px;color:var(--ink2);background:var(--panel)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bar .sp{flex:1}
+.seg{display:inline-flex}.seg button:first-child{border-radius:4px 0 0 4px}.seg button:last-child{border-radius:0 4px 4px 0;margin-left:-1px}
+button{font:inherit;font-size:14px;padding:7px 12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:4px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.props{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.props button{text-align:left;padding:10px 12px;line-height:1.35;width:100%}
+.opt{display:flex;flex-direction:column;gap:10px}.opt .hint{margin:0}.opt .row{margin:0}.opt.na{opacity:.45}
+.props button b{font-family:var(--mono);margin-right:6px}
+.props button small{display:block;color:var(--ink2);font-size:12px;margin-top:3px}
+.props button[aria-pressed="true"] small{color:#fff;opacity:.85}
+.hint{font-size:13px;color:var(--ink2);margin:10px 0 0}
+summary{cursor:pointer;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline}
+summary .sh::before{content:'\25B8\00a0';color:var(--accent)}
+details[open]>summary .sh::before{content:'\25BE\00a0'}
+summary::-webkit-details-marker{display:none}
+summary .sh{font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink2)}
+summary .ss{font-size:13px;font-family:var(--mono);color:var(--accent)}
+summary:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px}
+.panel h2{font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink2);margin:0 0 10px}
+.panel h3{font-size:14px;font-weight:600;margin:14px 0 6px}
+canvas{display:block;width:100%}
+.cap{font-size:12px;color:var(--ink2);margin:2px 0 8px;display:flex;flex-wrap:wrap;gap:4px 14px}
+.key{display:inline-flex;align-items:center;gap:5px}
+.sw{width:10px;height:10px;border-radius:2px;display:inline-block}
+.tiles{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+.tile .l{font-size:12px;color:var(--ink2)}
+.tile .v{font-family:var(--mono);font-size:21px;font-weight:500;font-variant-numeric:tabular-nums}
+.tile .r{font-size:12px;color:var(--ink2);font-family:var(--mono);min-height:18px}
+.verdict{font-weight:600;padding:2px 8px;border-radius:3px;font-size:13px}
+.verdict.h{background:var(--fast);color:#fff}.verdict.s{background:var(--accent);color:#fff}
+.rules{display:flex;flex-direction:column;gap:5px;margin:0;padding:0;list-style:none}
+.rules li{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px;border-left:4px solid var(--line)}
+.rules li .n{font-family:var(--mono);color:var(--ink2)}
+.rules li .a{font-family:var(--mono);font-size:12px;color:var(--ink2)}
+.rules li.off{opacity:.4}
+.rules li.on{background:var(--accent-soft)}
+.rules li.on.s0{border-left-color:var(--hold)}.rules li.on.s1{border-left-color:var(--fine)}.rules li.on.s2{border-left-color:var(--coarse)}.rules li.on.s3{border-left-color:var(--fast)}
+.bal{display:grid;grid-template-columns:110px 1fr 54px;gap:6px 8px;align-items:center;font-size:13px}
+.bal .t{height:12px;background:var(--bg);border-radius:2px;overflow:hidden;border:1px solid var(--line)}
+.bal .f{height:100%;background:var(--accent)}
+.bal .num{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+.live{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px;font-size:13px;margin-top:10px}
+.live span{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.ctl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.ctl h3{margin-top:0}
+.row{display:grid;grid-template-columns:1fr 70px;gap:2px 8px;align-items:center;margin-bottom:10px}
+.row label{font-size:13px}
+.row output{font-family:var(--mono);font-size:13px;text-align:right;font-variant-numeric:tabular-nums}
+.row input[type=range]{grid-column:1/3;width:100%;accent-color:var(--accent)}
+.row small{grid-column:1/3;color:var(--ink2);font-size:12px}
+.chk{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:10px}
+.chk input{margin-top:3px;accent-color:var(--accent)}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+td{font-family:var(--mono)}td:first-child{font-family:var(--sans)}
+th{font-weight:600;color:var(--ink2)}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+ul.plain{margin:0;padding-left:18px;max-width:70ch}
+ul.plain li{margin-bottom:5px}
+@media (max-width:900px){.grid,.two{grid-template-columns:minmax(0,1fr)}.tiles{grid-template-columns:repeat(3,minmax(0,1fr))}.ctl,.props{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:480px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>N117ZS governor hunting simulator</h1>
+  <p>Rotax 916iS with Airmaster AP431 and AC300 controller, Takeoff mode at full throttle. The engine and propeller model is fitted to the aircraft's flight logs, and the governor rules are decoded from the controller's 50 Hz diagnostic log.</p>
+  <span class="note">Governor logic is inferred from logs. It is not Airmaster firmware, and its predictions for untested settings need a flight test.</span>
+  <p style="margin-top:8px;font-size:13px">Assumptions, method and results are set out in the accompanying paper.</p>
+</header>
+
+<div class="bar" role="group" aria-label="Simulation">
+  <button id="pOld" aria-pressed="false">Firmware 10.139 as flown</button>
+  <button id="pCur" aria-pressed="true">Firmware 10.170 as flown</button>
+  <span id="custom" class="note" style="margin:0;display:none">Modified settings</span>
+  <span class="seg" role="group" aria-label="Controller mode"><button id="mTO" aria-pressed="true">Takeoff mode</button><button id="mCL" aria-pressed="false">Climb mode, 5400</button></span>
+  <span class="sp"></span>
+  <button id="bump">Disturb RPM by &minus;80</button>
+  <button id="restart">Restart</button>
+  <button id="pause">Pause</button>
+</div>
+
+<details class="panel" id="prop">
+  <summary><span class="sh">Proposed logic changes, not in any firmware</span><span class="ss" id="propState">None active</span></summary>
+  <p class="hint" style="margin:10px 0">Three changes to the governor logic, each explained and tested in the accompanying paper (section "Proposed logic changes"). Switch each on or off while the simulation runs. Start from firmware 10.170. Try 1 alone, 2 alone, then 1 and 2 together.</p>
+  <div class="props">
+    <div class="opt">
+      <button id="x1" aria-pressed="false"><b>1</b> Remove the fast-coarsen zone below the overspeed limit<small>The overspeed look-ahead stays</small></button>
+      <p class="hint">On or off. No adjustment.</p>
+    </div>
+    <div class="opt">
+      <button id="x2" aria-pressed="false"><b>2</b> Apply the deadband to predicted RPM<small>Uses rate of change in both directions</small></button>
+      <div class="row"><label for="pred">How far ahead it predicts, s</label><output id="oPred"></output><input type="range" id="pred" min="0" max="1.5" step="0.05"><small>The button sets 0.8 s. Moving the slider to zero switches this option off.</small></div>
+    </div>
+    <div class="opt">
+      <button id="x3" aria-pressed="false"><b>3</b> Proportional drive with rate damping<small>Replaces the deadband, so it switches 1 and 2 off</small></button>
+      <div class="row"><label for="Kp">Gain on RPM error, units/s per rpm</label><output id="oKp"></output><input type="range" id="Kp" min="0.005" max="0.12" step="0.001"></div>
+      <div class="row"><label for="Kd">Gain on rate of change, units/s per rpm/s</label><output id="oKd"></output><input type="range" id="Kd" min="0" max="0.25" step="0.001"><small>These two apply only while option 3 is on.</small></div>
+    </div>
+  </div>
+</details>
+
+<div class="tiles" aria-live="off">
+  <div class="tile"><div class="l">Behaviour</div><div class="v" style="font-size:15px;padding:5px 0"><span id="verdict" class="verdict h">Hunting</span></div><div class="r" id="rV"></div></div>
+  <div class="tile"><div class="l">RPM swing</div><div class="v" id="tSwing">0</div><div class="r" id="rSwing"></div></div>
+  <div class="tile"><div class="l">Cycle time</div><div class="v" id="tPer">0</div><div class="r" id="rPer"></div></div>
+  <div class="tile"><div class="l">Average RPM</div><div class="v" id="tMean">0</div><div class="r" id="rMean"></div></div>
+  <div class="tile"><div class="l">Time above 5800</div><div class="v" id="tOver">0</div><div class="r" id="rOver"></div></div>
+  <div class="tile"><div class="l">MAP range, inHg</div><div class="v" id="tMap" style="font-size:17px;padding:3px 0">0</div><div class="r" id="rMap"></div></div>
+</div>
+
+<div class="grid">
+  <section class="panel">
+    <h2>Last 20 seconds</h2>
+    <canvas id="cRpm" data-h="300" style="height:300px" aria-label="Engine RPM against time with target, deadband and overspeed limit"></canvas>
+    <div class="cap"><span class="key"><span class="sw" style="background:var(--accent-soft);border:1px solid var(--accent)"></span>Deadband</span><span class="key"><span class="sw" style="background:var(--ramp)"></span>Boost ramp, 5527 to 5765 rpm</span><span class="key"><span class="sw" style="background:var(--fast)"></span>Overspeed limit and fast-coarsen zone</span></div>
+    <canvas id="cDrive" data-h="22" style="height:22px" aria-label="Pitch motor state against time"></canvas>
+    <div class="cap"><span>Pitch motor:</span><span class="key"><span class="sw" style="background:var(--fine)"></span>Fining</span><span class="key"><span class="sw" style="background:var(--coarse)"></span>Coarsening</span><span class="key"><span class="sw" style="background:var(--fast)"></span>Fast coarsening</span></div>
+    <canvas id="cMap" data-h="135" style="height:135px" aria-label="Manifold pressure against time"></canvas>
+    <div class="cap"><span>Manifold pressure, inHg</span></div>
+    <canvas id="cPitch" data-h="135" style="height:135px" aria-label="Blade pitch against time"></canvas>
+    <div class="cap"><span>Blade pitch, controller units from start (up is coarser)</span></div>
+  </section>
+
+  <section class="panel">
+    <h2>Mechanism, live</h2>
+    <h3 style="margin-top:0">Engine: measured boost curve</h3>
+    <canvas id="cBoost" data-h="190" style="height:190px" aria-label="Manifold pressure against RPM with the live operating point"></canvas>
+    <div class="cap"><span>The dot is the engine now. On the ramp, more RPM brings more boost and more power.</span></div>
+    <h3>Power balance</h3>
+    <div class="bal">
+      <span>Engine power</span><div class="t"><div class="f" id="bPe"></div></div><span class="num" id="nPe"></span>
+      <span>Propeller load</span><div class="t"><div class="f" id="bPp" style="background:var(--ink2)"></div></div><span class="num" id="nPp"></span>
+    </div>
+    <div class="live">
+      <div>RPM <span id="lN"></span></div><div>Rate <span id="lR"></span> rpm/s</div>
+      <div>MAP <span id="lM"></span> inHg</div><div>Pitch rate <span id="lV"></span> units/s</div>
+    </div>
+    <h3>Governor: rule in force</h3>
+    <ol class="rules" id="rules"></ol>
+  </section>
+</div>
+
+<section class="panel">
+  <h2>Settings</h2>
+  <div class="ctl">
+    <div>
+      <h3>Parameters in the controller</h3>
+      <div class="row"><label for="tgt">Takeoff RPM (Par 110)</label><output id="oTgt"></output><input type="range" id="tgt" min="5300" max="5750" step="10"></div>
+      <div class="chk"><input type="checkbox" id="ovsOn"><label for="ovsOn">Overspeed logic active (Par 511 not zero)</label></div>
+      <div class="row"><label for="ovs">Overspeed limit (Par 511)</label><output id="oOvs"></output><input type="range" id="ovs" min="5750" max="5900" step="10"></div>
+      <div class="row" style="grid-template-columns:1fr 110px"><label for="db">Dead Band (Par 201)</label><output id="oDb"></output><input type="range" id="db" min="20" max="120" step="1"><small>After the arrow: where the pitch motor actually switches. With Par 201 = 60 the logs show &plusmn;46 rpm on 10.170 and about &plusmn;58 on 10.139. Other values assume the same proportion, which is not confirmed.</small></div>
+    </div>
+    <div>
+      <h3>Inside the firmware</h3>
+      <div class="row"><label for="margin">Fast-coarsen zone below the limit, rpm</label><output id="oMargin"></output><input type="range" id="margin" min="0" max="200" step="5"></div>
+      <div class="row"><label for="look">Overspeed look-ahead, s</label><output id="oLook"></output><input type="range" id="look" min="0" max="1.5" step="0.05"></div>
+      <div class="row"><label for="vfast">Fast coarsening speed, units/s</label><output id="oVfast"></output><input type="range" id="vfast" min="4" max="40" step="1"></div>
+      <div class="row"><label for="spd">Normal drive speed, &times; logged</label><output id="oSpd"></output><input type="range" id="spd" min="0.2" max="2" step="0.05"></div>
+    </div>
+    <div>
+      <h3>What-if</h3>
+      <div class="chk"><input type="checkbox" id="ramp"><label for="ramp">Boost rises with RPM, as measured. Untick to hold MAP at 48.3 inHg and see the governor alone.</label></div>
+    </div>
+  </div>
+</section>
+
+<div class="two">
+  <section class="panel">
+    <h2>Model against the logs</h2>
+    <div class="tw"><table id="val"><thead><tr><th>Takeoff, target 5700</th><th>10.139 log</th><th>10.139 model</th><th>10.170 log</th><th>10.170 model</th></tr></thead><tbody></tbody></table></div>
+    <p style="font-size:13px;color:var(--ink2);margin:10px 0 0;max-width:70ch">Log figures are medians from the controller's 50 Hz record: 46 Takeoff segments on 10.139 and one on 10.170 (11 Nov 2026). Model figures are computed in this page when it loads. Climb at 5400 rpm is steady in both the logs and the model.</p>
+  </section>
+  <section class="panel">
+    <h2>What it shows, and limits</h2>
+    <ul class="plain">
+      <li>At full throttle MAP rises from 43 to 50 inHg between 5527 and 5765 rpm. Engine power then grows with RPM about as fast as propeller load, so RPM barely settles on its own.</li>
+      <li>On 10.139 a plain deadband of about &plusmn;58 rpm hunts on that ramp. With the ramp removed it is steady.</li>
+      <li>On 10.170 the overspeed logic begins 100 rpm below Par 511. With the target at 5700 it begins at the target, so the upper half of the deadband is gone. It still hunts with the ramp removed.</li>
+      <li>Proposed change 1 removes the rule that takes away the upper deadband. Change 2 adds rate damping to the existing logic. Change 3 replaces the on/off deadband with a continuous drive. Rate of change is already computed by the firmware.</li>
+      <li>Switching to Climb mode moves the target to 5400 rpm, below the ramp and clear of the overspeed zone. The hunting stops with the throttle untouched, as in flight.</li>
+      <li>Fitted to two firmware versions near sea level. No altitude, temperature or airspeed effects, no ground roll, no throttle transients.</li>
+      <li>Pitch is in controller units. The decoded rules match the logged motor state on 96 to 97% of samples.</li>
+    </ul>
+  </section>
+</div>
+</div>
+
+<script>
+// Simulator core. Plant fitted to N117ZS logs; governor rules inferred from 50 Hz AC300 logs.
+const DT = 0.02;
+const PLANT = { A: 27.1705, kap: 0.021061, n: 4.04143, taub: 0.49466, tauth: 0.17754, P0: 105.438, lo: 43.15, hi: 50.0, r0: 5527, r1: 5765, noise: 4 };
+const PRESETS = {
+  old: { tgt: 5700, upOn: 58, upOff: 53, dnOn: 57, dnOff: 45, ovsOn: false, ovs: 5800, look: 0.65, margin: 100, antf: 0, spd: 1, vfast: 28, tau: 0.08, ramp: true, rule2: true, pred: 0, pd: false, Kp: 0.031, Kd: 0.089 },
+  cur: { tgt: 5700, upOn: 46, upOff: 44, dnOn: 46, dnOff: 44, ovsOn: true, ovs: 5800, look: 0.65, margin: 100, antf: 0, spd: 1, vfast: 28, tau: 0.12, ramp: true, rule2: true, pred: 0, pd: false, Kp: 0.031, Kd: 0.089 }
+};
+function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeSim(seed) {
+  const rnd = mulberry(seed || 1);
+  const gauss = () => { let u = 0, v = 0; while (u === 0) u = rnd(); v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  const s = { N: 5670, m: 0, th: 0, the: 0, v: 0, st: 0, rule: 5, hist: [5670, 5670, 5670, 5670, 5670, 5670], pe: 0, pp: 0, rate: 0, t: 0, rf: 0 };
+  const boost = (x, c) => c.ramp ? PLANT.lo + (PLANT.hi - PLANT.lo) * Math.min(1, Math.max(0, (x - PLANT.r0) / (PLANT.r1 - PLANT.r0))) : 48.3;
+  s.reset = (c) => { s.N = c.tgt - 30; s.m = boost(s.N, c); s.th = 0; s.the = 0; s.v = 0; s.st = 0; s.rule = 5; s.hist = Array(6).fill(s.N); s.t = 0; s.rf = 0; };
+  s.boost = boost;
+  s.step = (c) => {
+    s.m += DT / PLANT.taub * (boost(s.N, c) - s.m);
+    s.pe = 2.158 * s.m + 0.01209 * s.N - 66.38;
+    s.the += DT / PLANT.tauth * (s.th - s.the);
+    s.pp = PLANT.P0 * Math.pow(s.N / 5700, PLANT.n) * Math.exp(PLANT.kap * s.the);
+    s.N += DT * PLANT.A * (s.pe - s.pp) * 5700 / s.N;
+    const meas = s.N + gauss() * PLANT.noise; s.hist.push(meas); s.hist.shift();
+    const rate = s.hist[5] - s.hist[0]; s.rate = rate * 10;
+    const err = meas - c.tgt; let fast = false; const k = c.look * 10; let u;
+    s.rf += 0.4 * (rate * 10 - s.rf);
+    if (c.ovsOn && meas + k * rate >= c.ovs) { s.st = 2; fast = true; s.rule = 1; }
+    else if (c.pd) {
+      let q = c.Kp * err + c.Kd * s.rf; if (Math.abs(q) < 0.5) q = 0; q = Math.max(-13, Math.min(28, q));
+      s.st = q > 0 ? 2 : (q < 0 ? 1 : 0); s.rule = 7; u = q;
+    }
+    else if (c.ovsOn && c.rule2 && meas >= c.ovs - c.margin && rate > -1) { s.st = 2; fast = true; s.rule = 2; }
+    else {
+      const e = err + c.pred * 10 * rate;
+      if (e <= -c.dnOn || (s.st === 1 && e < -c.dnOff)) { s.st = 1; s.rule = 3; }
+      else if (e >= c.upOn || (s.st === 2 && e > c.upOff)) { s.st = 2; s.rule = 4; }
+      else { s.st = 0; s.rule = 5; }
+    }
+    if (s.rule !== 7) { const spd = (3 + 0.04 * Math.abs(err)) * c.spd; u = s.st === 2 ? (fast ? c.vfast : spd) : (s.st === 1 ? -spd : 0); }
+    s.v += DT / c.tau * (u - s.v); s.th += s.v * DT; s.t += DT;
+  };
+  return s;
+}
+function cycleStats(rpm, st) {
+  const n = rpm.length; if (n < 100) return null;
+  let mean = 0, mx = -1e9, mn = 1e9, over = 0, fin = 0, co = 0;
+  for (let i = 0; i < n; i++) { const v = rpm[i]; mean += v; if (v > mx) mx = v; if (v < mn) mn = v; if (v > 5800) over++; if (st[i] === 1) fin++; else if (st[i] >= 2) co++; }
+  mean /= n; const up = [];
+  for (let i = 1; i < n; i++) if (rpm[i - 1] < mean && rpm[i] >= mean) up.push(i);
+  const pk = [], tr = [];
+  for (let j = 1; j < up.length; j++) { let a = -1e9, b = 1e9; for (let i = up[j - 1]; i < up[j]; i++) { if (rpm[i] > a) a = rpm[i]; if (rpm[i] < b) b = rpm[i]; } if (a - b >= 60) { pk.push(a); tr.push(b); } }
+  const med = (x) => { const y = x.slice().sort((p, q) => p - q); return y[y.length >> 1]; };
+  const cyc = pk.length >= 2;
+  return { mean, max: mx, min: mn, over: over / n, fin: fin / n, co: co / n, hunting: cyc, peak: cyc ? med(pk) : mx, trough: cyc ? med(tr) : mn, swing: cyc ? med(pk) - med(tr) : mx - mn, period: cyc ? (up[up.length - 1] - up[0]) / (up.length - 1) * DT : NaN };
+}
+if (typeof module !== 'undefined') module.exports = { DT, PLANT, PRESETS, makeSim, cycleStats };
+
+(function(){
+const $=id=>document.getElementById(id);
+const WIN=1000, LOG={old:{peak:5824,trough:5606,swing:218,mean:5697,period:3.74,over:.12,map:'43.1 to 50.1'},cur:{peak:5734,trough:5540,swing:194,mean:5627,period:2.80,over:0,map:'43.7 to 49.5'}};
+let c={...PRESETS.cur}, preset='cur', basis='cur', mode='TO', toRpm=5700, dbPar=60, sim=makeSim(7), running=true, last=0, acc=0;
+const META={old:{scale:58/60,hUp:5,hDn:12},cur:{scale:46/60,hUp:2,hDn:2}};
+const B={rpm:[],map:[],th:[],st:[]};
+const RULES=[
+ [1,'RPM on course to reach the overspeed limit','Coarsen fast',3],
+ [2,'RPM inside the zone below the limit, and not falling','Coarsen fast',3],
+ [3,'RPM below target minus deadband','Fine',1],
+ [4,'RPM above target plus deadband','Coarsen',2],
+ [5,'Otherwise','Hold',0],
+ [7,'Proportional drive: pitch rate = Kp × error + Kd × rate of change','Variable',0]];
+function buildRules(){ $('rules').innerHTML=RULES.map(r=>'<li id="ru'+r[0]+'" data-s="'+r[3]+'"><span class="n">'+(r[0]===7?'P':r[0])+'</span><span>'+r[1]+'</span><span class="a">'+r[2]+'</span></li>').join(''); }
+function push(){ B.rpm.push(sim.N);B.map.push(sim.m);B.th.push(sim.th);B.st.push(sim.st===2&&sim.rule<=2?3:sim.st); if(B.rpm.length>WIN){B.rpm.shift();B.map.shift();B.th.shift();B.st.shift();} }
+function restart(){ sim=makeSim(7); sim.reset(c); B.rpm=[];B.map=[];B.th=[];B.st=[]; for(let i=0;i<1500;i++){sim.step(c); if(i>=500)push();} }
+function css(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+function prep(cv){const r=window.devicePixelRatio||1,w=cv.clientWidth,h=+cv.dataset.h;if(cv.width!==Math.round(w*r)||cv.height!==Math.round(h*r)){cv.width=Math.round(w*r);cv.height=Math.round(h*r);cv.style.height=h+'px';}const x=cv.getContext('2d');x.setTransform(r,0,0,r,0,0);x.clearRect(0,0,w,h);x.font='11px '+css('--mono');return [x,w,h];}
+function trace(x,arr,X,Y,col,lw){x.strokeStyle=col;x.lineWidth=lw||1.6;x.beginPath();for(let i=0;i<arr.length;i+=2){const px=X(i),py=Y(arr[i]);i?x.lineTo(px,py):x.moveTo(px,py);}x.stroke();}
+function axis(x,w,h,Y,ticks,L,fmt){x.fillStyle=css('--ink2');x.strokeStyle=css('--line');x.lineWidth=1;ticks.forEach(t=>{const y=Y(t);x.beginPath();x.moveTo(L,y);x.lineTo(w,y);x.stroke();x.fillText(fmt?fmt(t):t,2,y+4);});}
+function drawRpm(){const [x,w,h]=prep($('cRpm')),L=38;let dmin=1e9;for(const v of B.rpm)if(v<dmin)dmin=v;const lo=Math.floor(Math.min(5350,c.tgt-150,dmin-40)/50)*50,hi=5900,Y=v=>h-6-(v-lo)/(hi-lo)*(h-12),X=i=>L+(i+WIN-B.rpm.length)/WIN*(w-L);
+ if(c.ramp){x.fillStyle=css('--ramp');x.fillRect(L,Y(5765),w-L,Y(Math.max(lo,5527))-Y(5765));}
+ x.fillStyle=css('--accent-soft');x.globalAlpha=.75;x.fillRect(L,Y(c.tgt+c.upOn),w-L,Y(c.tgt-c.dnOn)-Y(c.tgt+c.upOn));x.globalAlpha=1;
+ const tk=[];for(let t=Math.ceil(lo/100)*100;t<=hi;t+=100)tk.push(t);axis(x,w,h,Y,tk,L);
+ x.strokeStyle=css('--accent');x.setLineDash([5,4]);x.beginPath();x.moveTo(L,Y(c.tgt));x.lineTo(w,Y(c.tgt));x.stroke();x.setLineDash([]);
+ x.fillStyle=css('--accent');x.fillText((mode==='TO'?'Takeoff':'Climb')+' target '+c.tgt,L+6,Y(c.tgt)-4);
+ if(c.ovsOn){x.strokeStyle=css('--fast');x.lineWidth=1.5;x.beginPath();x.moveTo(L,Y(c.ovs));x.lineTo(w,Y(c.ovs));x.stroke();if(c.rule2&&!c.pd){x.setLineDash([2,4]);x.beginPath();x.moveTo(L,Y(c.ovs-c.margin));x.lineTo(w,Y(c.ovs-c.margin));x.stroke();x.setLineDash([]);}x.fillStyle=css('--fast');x.textAlign='right';x.fillText('overspeed limit '+c.ovs,w-4,Y(c.ovs)-4);if(c.margin>12&&c.rule2&&!c.pd)x.fillText('fast-coarsen zone from '+(c.ovs-c.margin),w-4,Y(c.ovs-c.margin)+12);x.textAlign='left';}
+ trace(x,B.rpm,X,Y,css('--ink'),1.8);}
+function drawDrive(){const [x,w,h]=prep($('cDrive')),L=38,cols=[null,css('--fine'),css('--coarse'),css('--fast')];const n=B.st.length,bw=(w-L)/WIN;for(let i=0;i<n;i++){const s=B.st[i];if(s){x.fillStyle=cols[s];x.fillRect(L+(i+WIN-n)*bw,2,bw+.6,h-4);}}x.strokeStyle=css('--line');x.strokeRect(L+.5,1.5,w-L-1,h-3);}
+function drawSmall(id,arr,lo,hi,ticks,fmt){const [x,w,h]=prep($(id)),L=38,Y=v=>h-6-(v-lo)/(hi-lo)*(h-12),X=i=>L+(i+WIN-arr.length)/WIN*(w-L);axis(x,w,h,Y,ticks,L,fmt);trace(x,arr,X,Y,css('--ink'),1.6);}
+function drawBoost(){const [x,w,h]=prep($('cBoost')),L=30,Bm=18,lo=5300,hi=5900,X=v=>L+(v-lo)/(hi-lo)*(w-L-22),Y=v=>h-Bm-(v-42)/(51-42)*(h-Bm-8);
+ x.strokeStyle=css('--line');x.fillStyle=css('--ink2');[43,45,47,49,51].forEach(t=>{x.beginPath();x.moveTo(L,Y(t));x.lineTo(w-22,Y(t));x.stroke();x.fillText(t,6,Y(t)+4);});
+ [5300,5400,5500,5600,5700,5800,5900].forEach(t=>{x.textAlign='center';x.fillText(t,X(t),h-4);});x.textAlign='left';
+ if(c.ramp){x.fillStyle=css('--ramp');x.fillRect(X(5527),8,X(5765)-X(5527),h-Bm-8);}
+ x.strokeStyle=css('--accent');x.setLineDash([5,4]);x.beginPath();x.moveTo(X(c.tgt),8);x.lineTo(X(c.tgt),h-Bm);x.stroke();x.setLineDash([]);
+ if(c.ovsOn){x.strokeStyle=css('--fast');x.beginPath();x.moveTo(X(c.ovs),8);x.lineTo(X(c.ovs),h-Bm);x.stroke();}
+ x.strokeStyle=css('--ink2');x.lineWidth=2;x.beginPath();for(let v=lo;v<=hi;v+=5){const y=Y(sim.boost(v,c));v===lo?x.moveTo(X(v),y):x.lineTo(X(v),y);}x.stroke();
+ const n=B.rpm.length;x.strokeStyle=css('--accent');x.lineWidth=1;x.globalAlpha=.5;x.beginPath();for(let i=Math.max(0,n-200);i<n;i+=2){const px=X(Math.max(lo,Math.min(hi,B.rpm[i]))),py=Y(B.map[i]);i===Math.max(0,n-200)?x.moveTo(px,py):x.lineTo(px,py);}x.stroke();x.globalAlpha=1;
+ x.fillStyle=css('--accent');x.beginPath();x.arc(X(Math.max(lo,Math.min(hi,sim.N))),Y(sim.m),5.5,0,7);x.fill();x.strokeStyle=css('--panel');x.lineWidth=2;x.stroke();}
+function f0(v){return Math.round(v).toLocaleString('en-US').replace(/,/g,'');}
+function mapRange(){let a=1e9,b=-1e9;for(const v of B.map){if(v<a)a=v;if(v>b)b=v;}return a.toFixed(1)+' to '+b.toFixed(1);}
+function stats(){const q=cycleStats(B.rpm.slice(-600),B.st.slice(-600));if(!q)return;const L=(preset==='custom'||mode!=='TO')?null:LOG[preset];
+ const hunting=q.hunting&&q.swing>=60;if(!hunting){let a=1e9,b=-1e9;for(const v of B.rpm.slice(-200)){if(v<a)a=v;if(v>b)b=v;}q.swing=b-a;}$('verdict').textContent=hunting?'Hunting':'Steady';$('verdict').className='verdict '+(hunting?'h':'s');
+ $('tSwing').textContent=f0(q.swing)+' rpm';$('tPer').textContent=hunting?q.period.toFixed(1)+' s':'none';$('tMean').textContent=f0(q.mean);$('tOver').textContent=Math.round(q.over*100)+'%';$('tMap').textContent=mapRange();
+ $('rV').textContent=L?'Logged: hunting':(preset!=='custom'&&mode==='CL'?'Logged: steady':'');$('rSwing').textContent=L?'Logged: '+L.swing:'';$('rPer').textContent=L?'Logged: '+L.period.toFixed(1)+' s':'';$('rMean').textContent=L?'Logged: '+L.mean:(Math.round(q.mean-c.tgt)>=0?'+':'')+Math.round(q.mean-c.tgt)+' vs target';$('rOver').textContent=L?'Logged: '+Math.round(L.over*100)+'%':'';$('rMap').textContent=L?'Logged: '+L.map:'';}
+function live(){$('bPe').style.width=Math.max(0,Math.min(100,(sim.pe-80)/40*100))+'%';$('bPp').style.width=Math.max(0,Math.min(100,(sim.pp-80)/40*100))+'%';$('nPe').textContent=sim.pe.toFixed(0)+'%';$('nPp').textContent=sim.pp.toFixed(0)+'%';
+ $('lN').textContent=f0(sim.N);$('lR').textContent=(sim.rate>=0?'+':'')+f0(sim.rate);$('lM').textContent=sim.m.toFixed(1);$('lV').textContent=(sim.v>=0?'+':'')+sim.v.toFixed(1);
+ RULES.forEach(r=>{const el=$('ru'+r[0]),n=r[0];const off=(n<=2&&!c.ovsOn)||(n===2&&(!c.rule2||c.pd))||(n>=3&&n<=5&&c.pd)||(n===7&&!c.pd);el.className=(off?'off ':'')+(sim.rule===n?'on s'+(n===7?sim.st:r[3]):'');});}
+function draw(){drawRpm();drawDrive();drawSmall('cMap',B.map,42,51,[43,45,47,49,51]);let a=1e9,b=-1e9;for(const v of B.th){if(v<a)a=v;if(v>b)b=v;}const m=(a+b)/2,hs=Math.max(8,(b-a)/2+2);drawSmall('cPitch',B.th,m-hs,m+hs,[Math.round(m-hs/2),Math.round(m),Math.round(m+hs/2)]);drawBoost();live();}
+let frame=0;
+function loop(t){if(running){acc+=Math.min(100,t-last);let k=0;while(acc>=20&&k<10){sim.step(c);push();acc-=20;k++;}draw();if(++frame%15===0)stats();}last=t;requestAnimationFrame(loop);}
+const IN={tgt:['oTgt',v=>v],ovs:['oOvs',v=>v],margin:['oMargin',v=>v],look:['oLook',v=>(+v).toFixed(2)],vfast:['oVfast',v=>v],spd:['oSpd',v=>(+v).toFixed(2)],pred:['oPred',v=>+v>0?(+v).toFixed(2):'off'],Kp:['oKp',v=>(+v).toFixed(3)],Kd:['oKd',v=>(+v).toFixed(3)]};
+function show(){$('tgt').value=toRpm;$('db').value=dbPar;$('oDb').textContent=dbPar+' ⇒ ±'+c.dnOn+' rpm';$('mTO').setAttribute('aria-pressed',mode==='TO');$('mCL').setAttribute('aria-pressed',mode==='CL');$('ovs').value=c.ovs;$('margin').value=c.margin;$('look').value=c.look;$('vfast').value=c.vfast;$('spd').value=c.spd;$('pred').value=c.pred;$('Kp').value=c.Kp;$('Kd').value=c.Kd;$('x1').setAttribute('aria-pressed',!c.rule2);$('x2').setAttribute('aria-pressed',c.pred>0);$('x3').setAttribute('aria-pressed',c.pd);$('x1').parentNode.className=$('x2').parentNode.className='opt'+(c.pd?' na':'');$('pred').disabled=c.pd;$('Kp').disabled=$('Kd').disabled=!c.pd;{const on=[];if(c.pd)on.push('3');else{if(!c.rule2)on.push('1');if(c.pred>0)on.push('2');}$('propState').textContent=on.length?'Active: '+on.join(' and '):'None active';}$('ru3').children[1].textContent=(c.pred>0?'Predicted RPM':'RPM')+' below target minus deadband';$('ru4').children[1].textContent=(c.pred>0?'Predicted RPM':'RPM')+' above target plus deadband';$('ovsOn').checked=c.ovsOn;$('ramp').checked=c.ramp;for(const k in IN)$(IN[k][0]).textContent=IN[k][1]($(k).value);
+ $('pOld').setAttribute('aria-pressed',basis==='old');$('pCur').setAttribute('aria-pressed',basis==='cur');$('custom').style.display=preset==='custom'?'':'none';['ovs','margin','look','vfast'].forEach(k=>$(k).disabled=!c.ovsOn);}
+function edited(){preset='custom';toRpm=+$('tgt').value;c.tgt=mode==='TO'?toRpm:5400;c.ovs=+$('ovs').value;c.margin=+$('margin').value;c.look=+$('look').value;c.vfast=+$('vfast').value;c.spd=+$('spd').value;c.pred=+$('pred').value;c.Kp=+$('Kp').value;c.Kd=+$('Kd').value;c.ovsOn=$('ovsOn').checked;c.ramp=$('ramp').checked;show();if(!running){draw();stats();}}
+function setPreset(p){preset=p;basis=p;mode='TO';toRpm=5700;dbPar=60;c={...PRESETS[p]};show();restart();draw();stats();}
+function setMode(m){mode=m;c.tgt=m==='TO'?toRpm:5400;show();if(!running){draw();stats();}}
+function setDb(){dbPar=+$('db').value;const m=META[basis],on=Math.max(4,Math.round(dbPar*m.scale));c.upOn=on;c.dnOn=on;c.upOff=Math.max(2,on-m.hUp);c.dnOff=Math.max(2,on-m.hDn);preset='custom';show();if(!running){draw();stats();}}
+function validation(){const run=(p)=>{const acc={peak:0,trough:0,swing:0,mean:0,period:0,over:0};for(let s=1;s<=4;s++){const m=makeSim(s);m.reset(PRESETS[p]);const r=[],st=[];for(let i=0;i<3500;i++){m.step(PRESETS[p]);if(i>=500){r.push(m.N);st.push(m.st);}}const q=cycleStats(r,st);for(const k in acc)acc[k]+=q[k]/4;}return acc;};
+ const o=run('old'),n=run('cur'),rows=[['Peak RPM','peak',f0],['Trough RPM','trough',f0],['Swing, rpm','swing',f0],['Average RPM','mean',f0],['Cycle time, s','period',v=>v.toFixed(1)],['Time above 5800','over',v=>Math.round(v*100)+'%']];
+ $('val').tBodies[0].innerHTML=rows.map(r=>'<tr><td>'+r[0]+'</td><td>'+r[2](LOG.old[r[1]])+'</td><td>'+r[2](o[r[1]])+'</td><td>'+r[2](LOG.cur[r[1]])+'</td><td>'+r[2](n[r[1]])+'</td></tr>').join('');}
+buildRules();
+for(const k in IN)$(k).addEventListener('input',edited);
+$('db').addEventListener('input',setDb);$('mTO').addEventListener('click',()=>setMode('TO'));$('mCL').addEventListener('click',()=>setMode('CL'));
+$('ovsOn').addEventListener('change',edited);
+const tog=(f)=>()=>{f();preset='custom';show();if(!running){draw();stats();}};
+$('x1').addEventListener('click',tog(()=>{c.pd=false;c.rule2=!c.rule2;}));$('x2').addEventListener('click',tog(()=>{c.pd=false;c.pred=c.pred>0?0:0.8;}));$('x3').addEventListener('click',tog(()=>{c.pd=!c.pd;if(c.pd){c.rule2=true;c.pred=0;}}));$('ramp').addEventListener('change',edited);
+$('pOld').addEventListener('click',()=>setPreset('old'));$('pCur').addEventListener('click',()=>setPreset('cur'));
+$('restart').addEventListener('click',()=>{restart();draw();stats();});
+$('bump').addEventListener('click',()=>{sim.N-=80;});
+$('pause').addEventListener('click',()=>{running=!running;$('pause').textContent=running?'Pause':'Run';});
+window.addEventListener('resize',()=>{if(!running)draw();});
+new MutationObserver(()=>draw()).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+show();restart();draw();stats();validation();
+if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches){running=false;$('pause').textContent='Run';}
+requestAnimationFrame(t=>{last=t;loop(t);});
+})();
+</script>
+</body>
+</html>
