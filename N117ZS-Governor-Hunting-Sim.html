@@ -36,6 +36,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15p
 .wrap{max-width:1180px;margin:0 auto;padding:20px 16px 48px;display:flex;flex-direction:column;gap:16px}
 header h1{font-size:22px;font-weight:600;margin:0 0 4px;text-wrap:balance}
 header p{margin:0;color:var(--ink2);max-width:70ch}
+.ver{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--ink2);border:1px solid var(--line);border-radius:4px;padding:2px 7px;margin-left:8px;vertical-align:middle;white-space:nowrap;background:var(--panel)}
 .note{display:inline-block;margin-top:10px;padding:4px 10px;border:1px solid var(--line);border-radius:4px;font-size:13px;color:var(--ink2);background:var(--panel)}
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .bar .sp{flex:1}
@@ -44,9 +45,9 @@ button{font:inherit;font-size:14px;padding:7px 12px;border:1px solid var(--line)
 button:hover{border-color:var(--accent)}
 button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
-.props{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.props{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .props button{text-align:left;padding:10px 12px;line-height:1.35;width:100%}
-.opt{display:flex;flex-direction:column;gap:10px}.opt .hint{margin:0}.opt .row{margin:0}.opt.na{opacity:.45}
+.opt{display:flex;flex-direction:column;gap:10px}.opt .hint{margin:0}.opt .row{margin:0}.opt.na{opacity:.45}.opt .hint{max-width:62ch}
 .props button b{font-family:var(--mono);margin-right:6px}
 .props button small{display:block;color:var(--ink2);font-size:12px;margin-top:3px}
 .props button[aria-pressed="true"] small{color:#fff;opacity:.85}
@@ -66,7 +67,7 @@ canvas{display:block;width:100%}
 .cap{font-size:12px;color:var(--ink2);margin:2px 0 8px;display:flex;flex-wrap:wrap;gap:4px 14px}
 .key{display:inline-flex;align-items:center;gap:5px}
 .sw{width:10px;height:10px;border-radius:2px;display:inline-block}
-.tiles{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .tile{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
 .tile .l{font-size:12px;color:var(--ink2)}
 .tile .v{font-family:var(--mono);font-size:21px;font-weight:500;font-variant-numeric:tabular-nums}
@@ -104,17 +105,17 @@ th{font-weight:600;color:var(--ink2)}
 .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 ul.plain{margin:0;padding-left:18px;max-width:70ch}
 ul.plain li{margin-bottom:5px}
-@media (max-width:900px){.grid,.two{grid-template-columns:minmax(0,1fr)}.tiles{grid-template-columns:repeat(3,minmax(0,1fr))}.ctl,.props{grid-template-columns:minmax(0,1fr)}}
-@media (max-width:480px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:900px){.grid,.two{grid-template-columns:minmax(0,1fr)}.tiles{grid-template-columns:repeat(4,minmax(0,1fr))}.ctl,.props{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:640px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
 <div class="wrap">
 <header>
-  <h1>N117ZS governor hunting simulator</h1>
+  <h1>N117ZS governor hunting simulator <span class="ver">Version 1.1 &middot; 16 Nov 2026</span></h1>
   <p>Rotax 916iS with Airmaster AP431 and AC300 controller, Takeoff mode at full throttle. The engine and propeller model is fitted to the aircraft's flight logs, and the governor rules are decoded from the controller's 50 Hz diagnostic log.</p>
   <span class="note">Governor logic is inferred from logs. It is not Airmaster firmware, and its predictions for untested settings need a flight test.</span>
-  <p style="margin-top:8px;font-size:13px">Assumptions, method and results are set out in the accompanying paper.</p>
+  <p style="margin-top:8px;font-size:13px">Assumptions, method and results are set out in the accompanying paper. Changes since version 1 are listed at the foot of the page.</p>
 </header>
 
 <div class="bar" role="group" aria-label="Simulation">
@@ -124,26 +125,35 @@ ul.plain li{margin-bottom:5px}
   <span class="seg" role="group" aria-label="Controller mode"><button id="mTO" aria-pressed="true">Takeoff mode</button><button id="mCL" aria-pressed="false">Climb mode, 5400</button></span>
   <span class="sp"></span>
   <button id="bump">Disturb RPM by &minus;80</button>
-  <button id="restart">Restart</button>
+  <button id="resetAll">Reset all settings</button>
+  <button id="restart">Restart run</button>
   <button id="pause">Pause</button>
 </div>
 
 <details class="panel" id="prop">
   <summary><span class="sh">Proposed logic changes, not in any firmware</span><span class="ss" id="propState">None active</span></summary>
-  <p class="hint" style="margin:10px 0">Three changes to the governor logic, each explained and tested in the accompanying paper (section "Proposed logic changes"). Switch each on or off while the simulation runs. Start from firmware 10.170. Try 1 alone, 2 alone, then 1 and 2 together.</p>
+  <p class="hint" style="margin:10px 0">Four changes to the governor logic. Changes 1 to 3 are explained and tested in the accompanying paper (section "Proposed logic changes"); change 4 is new in this version. Switch each on or off while the simulation runs, and watch the RPM swing and the two pitch motor tiles. Start from firmware 10.170. Try 1 alone, then 1 and 2, then add 4. Check each combination in Climb mode as well.</p>
   <div class="props">
     <div class="opt">
       <button id="x1" aria-pressed="false"><b>1</b> Remove the fast-coarsen zone below the overspeed limit<small>The overspeed look-ahead stays</small></button>
+      <p class="hint">Firmware 10.170 coarsens fast whenever RPM is within 100 rpm of the overspeed limit and not falling. With the target at 5700 that zone starts at the target, so RPM cannot rest in the upper half of the deadband and is pushed down again every cycle. This change removes the zone. The look-ahead still coarsens fast when RPM is on course to reach the limit. In the model the swing falls from about 190 to about 75 rpm, the average returns to near the target, and the motor starts less often than today.</p>
       <p class="hint">On or off. No adjustment.</p>
     </div>
     <div class="opt">
       <button id="x2" aria-pressed="false"><b>2</b> Apply the deadband to predicted RPM<small>Uses rate of change in both directions</small></button>
+      <p class="hint">The deadband compares RPM now with the target. This change compares predicted RPM instead: RPM plus rate of change times the prediction time. The motor starts before RPM leaves the band and stops before RPM is back inside it, which damps the cycle. It needs change 1; with the fast-coarsen zone still in place it helps only partly. Rate of change is a noisy signal, so use it with change 4.</p>
       <div class="row"><label for="pred">How far ahead it predicts, s</label><output id="oPred"></output><input type="range" id="pred" min="0" max="1.5" step="0.05"><small>The button sets 0.8 s. Moving the slider to zero switches this option off.</small></div>
     </div>
     <div class="opt">
       <button id="x3" aria-pressed="false"><b>3</b> Proportional drive with rate damping<small>Replaces the deadband, so it switches 1 and 2 off</small></button>
+      <p class="hint">Sets the pitch motor speed continuously instead of on or off: speed = Kp &times; RPM error + Kd &times; rate of change, limited to the fastest speeds seen in the logs. The overspeed look-ahead stays. It gives the smallest swing in the model, but the motor runs most of the time, and change 4 only partly cures that.</p>
       <div class="row"><label for="Kp">Gain on RPM error, units/s per rpm</label><output id="oKp"></output><input type="range" id="Kp" min="0.005" max="0.12" step="0.001"></div>
       <div class="row"><label for="Kd">Gain on rate of change, units/s per rpm/s</label><output id="oKd"></output><input type="range" id="Kd" min="0" max="0.25" step="0.001"><small>These two apply only while option 3 is on.</small></div>
+    </div>
+    <div class="opt" id="opt4">
+      <button id="x4" aria-pressed="false"><b>4</b> Smooth the rate of change before using it<small>Applies to changes 2 and 3</small></button>
+      <p class="hint">Rate of change is the RPM difference over 0.1 s. With 4 rpm of noise on the RPM signal (assumed, not measured) that is about 57 rpm/s of noise in the rate. Changes 2 and 3 then switch the pitch motor on noise several hundred times a minute, in Climb as well as Takeoff. This change passes the rate through a first-order filter first. The cost is a somewhat larger swing.</p>
+      <div class="row"><label for="smooth">Smoothing time, s</label><output id="oSmooth"></output><input type="range" id="smooth" min="0" max="0.5" step="0.05"><small>The button sets 0.15 s. Zero switches it off. The overspeed look-ahead keeps the unsmoothed rate.</small></div>
     </div>
   </div>
 </details>
@@ -155,6 +165,8 @@ ul.plain li{margin-bottom:5px}
   <div class="tile"><div class="l">Average RPM</div><div class="v" id="tMean">0</div><div class="r" id="rMean"></div></div>
   <div class="tile"><div class="l">Time above 5800</div><div class="v" id="tOver">0</div><div class="r" id="rOver"></div></div>
   <div class="tile"><div class="l">MAP range, inHg</div><div class="v" id="tMap" style="font-size:17px;padding:3px 0">0</div><div class="r" id="rMap"></div></div>
+  <div class="tile"><div class="l">Pitch changes per minute</div><div class="v" id="tStarts">0</div><div class="r" id="rStarts"></div></div>
+  <div class="tile"><div class="l">Pitch motor running</div><div class="v" id="tRun">0</div><div class="r" id="rRun"></div></div>
 </div>
 
 <div class="grid">
@@ -217,18 +229,41 @@ ul.plain li{margin-bottom:5px}
   <section class="panel">
     <h2>Model against the logs</h2>
     <div class="tw"><table id="val"><thead><tr><th>Takeoff, target 5700</th><th>10.139 log</th><th>10.139 model</th><th>10.170 log</th><th>10.170 model</th></tr></thead><tbody></tbody></table></div>
-    <p style="font-size:13px;color:var(--ink2);margin:10px 0 0;max-width:70ch">Log figures are medians from the controller's 50 Hz record: 46 Takeoff segments on 10.139 and one on 10.170 (11 Nov 2026). Model figures are computed in this page when it loads. Climb at 5400 rpm is steady in both the logs and the model.</p>
+    <p style="font-size:13px;color:var(--ink2);margin:10px 0 0;max-width:70ch">Log figures are medians from the controller's 50 Hz record: 46 Takeoff segments on 10.139 and one on 10.170 (11 Nov 2026). Model figures are computed in this page when it loads. Climb at 5400 rpm is steady in both the logs and the model. Logged pitch changes per minute have not yet been counted from the record.</p>
   </section>
   <section class="panel">
     <h2>What it shows, and limits</h2>
     <ul class="plain">
       <li>At full throttle MAP rises from 43 to 50 inHg between 5527 and 5765 rpm. Engine power then grows with RPM about as fast as propeller load, so RPM barely settles on its own.</li>
       <li>On 10.139 a plain deadband of about &plusmn;58 rpm hunts on that ramp. With the ramp removed it is steady.</li>
-      <li>On 10.170 the overspeed logic begins 100 rpm below Par 511. With the target at 5700 it begins at the target, so the upper half of the deadband is gone. It still hunts with the ramp removed.</li>
+      <li>On 10.170 the overspeed logic begins 100 rpm below Par 511. With the target at 5700 it begins at the target, so the upper half of the deadband is gone. In this model it still hunts with the ramp removed; that result depends on the fitted engine and propeller values.</li>
       <li>Proposed change 1 removes the rule that takes away the upper deadband. Change 2 adds rate damping to the existing logic. Change 3 replaces the on/off deadband with a continuous drive. Rate of change is already computed by the firmware.</li>
+      <li>Changes 2 and 3 act on rate of change, which is noisy. Without change 4 the model's pitch motor starts or reverses several hundred times a minute. The noise level (4 rpm per sample) is assumed, not measured, and the motor counts scale with it.</li>
       <li>Switching to Climb mode moves the target to 5400 rpm, below the ramp and clear of the overspeed zone. The hunting stops with the throttle untouched, as in flight.</li>
       <li>Fitted to two firmware versions near sea level. No altitude, temperature or airspeed effects, no ground roll, no throttle transients.</li>
       <li>Pitch is in controller units. The decoded rules match the logged motor state on 96 to 97% of samples.</li>
+    </ul>
+  </section>
+  <section class="panel" style="grid-column:1/-1">
+    <h2>Changes in version 1.1 (16 Nov 2026), since version 1 (13 Nov 2026)</h2>
+    <div class="tw"><table><thead><tr><th>Model figures</th><th>Takeoff 5700: RPM swing</th><th>Takeoff: pitch changes per minute</th><th>Takeoff: motor running</th><th>Climb 5400: pitch changes per minute</th></tr></thead><tbody>
+      <tr><td>10.139 as flown</td><td>240</td><td>30</td><td>65%</td><td>0</td></tr>
+      <tr><td>10.170 as flown</td><td>190</td><td>190</td><td>80%</td><td>0</td></tr>
+      <tr><td>Change 1</td><td>75</td><td>70</td><td>6%</td><td>0</td></tr>
+      <tr><td>Changes 1 + 2</td><td>30</td><td>850</td><td>36%</td><td>850</td></tr>
+      <tr><td>Changes 1 + 2 + 4 (0.15 s)</td><td>55</td><td>60</td><td>4%</td><td>0</td></tr>
+      <tr><td>Change 3</td><td>20</td><td>900</td><td>85%</td><td>900</td></tr>
+      <tr><td>Changes 3 + 4 (0.15 s)</td><td>22</td><td>560</td><td>70%</td><td>630</td></tr>
+    </tbody></table></div>
+    <p style="font-size:13px;color:var(--ink2);margin:10px 0 12px;max-width:70ch">Rounded means of 4 noise seeds, 2 minutes each, computed with this page's model. A pitch change is counted each time the pitch motor begins driving or reverses.</p>
+    <ul class="plain">
+      <li><b>Pitch motor tiles.</b> Two new read-outs: pitch changes per minute and the share of time the motor is running, over the last 20 seconds. Pitch changes per minute is also a row in the "Model against the logs" table; the logged values have not been counted yet. Version 1 reported only RPM swing and pitch travel, which hid how often a logic change starts and reverses the motor.</li>
+      <li><b>Change 4, rate smoothing.</b> New option and slider. It filters rate of change before changes 2 and 3 use it. It is off by default, so changes 2 and 3 behave as in version 1 until it is switched on.</li>
+      <li><b>What the new read-outs show.</b> Changes 1 + 2 and change 3 as first proposed cut the swing but switch the motor 850 to 900 times a minute, in Climb as well, where the motor is idle today. Change 1 alone does not. Changes 1 + 2 with 0.15 s of smoothing bring pitch changes below the model's figure for 10.170 as flown and leave Climb idle, with a swing of about 55 rpm. Smoothing only partly helps change 3.</li>
+      <li><b>Longer descriptions</b> of each proposed change: what it does, why, and its cost.</li>
+      <li><b>Wording.</b> The statement that 10.170 still hunts with the boost ramp removed is now marked as dependent on the fitted model values.</li>
+      <li><b>Reset all settings.</b> New button. It restores the selected firmware's settings, switches every proposed change off and returns to Takeoff mode. "Restart" is renamed "Restart run": it restarts the simulation and keeps the settings.</li>
+      <li><b>Unchanged.</b> The engine and propeller model and the decoded firmware rules. Figures for both firmware versions as flown are the same as in version 1.</li>
     </ul>
   </section>
 </div>
@@ -239,16 +274,16 @@ ul.plain li{margin-bottom:5px}
 const DT = 0.02;
 const PLANT = { A: 27.1705, kap: 0.021061, n: 4.04143, taub: 0.49466, tauth: 0.17754, P0: 105.438, lo: 43.15, hi: 50.0, r0: 5527, r1: 5765, noise: 4 };
 const PRESETS = {
-  old: { tgt: 5700, upOn: 58, upOff: 53, dnOn: 57, dnOff: 45, ovsOn: false, ovs: 5800, look: 0.65, margin: 100, antf: 0, spd: 1, vfast: 28, tau: 0.08, ramp: true, rule2: true, pred: 0, pd: false, Kp: 0.031, Kd: 0.089 },
-  cur: { tgt: 5700, upOn: 46, upOff: 44, dnOn: 46, dnOff: 44, ovsOn: true, ovs: 5800, look: 0.65, margin: 100, antf: 0, spd: 1, vfast: 28, tau: 0.12, ramp: true, rule2: true, pred: 0, pd: false, Kp: 0.031, Kd: 0.089 }
+  old: { tgt: 5700, upOn: 58, upOff: 53, dnOn: 57, dnOff: 45, ovsOn: false, ovs: 5800, look: 0.65, margin: 100, antf: 0, spd: 1, vfast: 28, tau: 0.08, ramp: true, rule2: true, pred: 0, pd: false, Kp: 0.031, Kd: 0.089, smooth: 0 },
+  cur: { tgt: 5700, upOn: 46, upOff: 44, dnOn: 46, dnOff: 44, ovsOn: true, ovs: 5800, look: 0.65, margin: 100, antf: 0, spd: 1, vfast: 28, tau: 0.12, ramp: true, rule2: true, pred: 0, pd: false, Kp: 0.031, Kd: 0.089, smooth: 0 }
 };
 function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function makeSim(seed) {
   const rnd = mulberry(seed || 1);
   const gauss = () => { let u = 0, v = 0; while (u === 0) u = rnd(); v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
-  const s = { N: 5670, m: 0, th: 0, the: 0, v: 0, st: 0, rule: 5, hist: [5670, 5670, 5670, 5670, 5670, 5670], pe: 0, pp: 0, rate: 0, t: 0, rf: 0 };
+  const s = { N: 5670, m: 0, th: 0, the: 0, v: 0, st: 0, rule: 5, hist: [5670, 5670, 5670, 5670, 5670, 5670], pe: 0, pp: 0, rate: 0, t: 0, rf: 0, rp: 0 };
   const boost = (x, c) => c.ramp ? PLANT.lo + (PLANT.hi - PLANT.lo) * Math.min(1, Math.max(0, (x - PLANT.r0) / (PLANT.r1 - PLANT.r0))) : 48.3;
-  s.reset = (c) => { s.N = c.tgt - 30; s.m = boost(s.N, c); s.th = 0; s.the = 0; s.v = 0; s.st = 0; s.rule = 5; s.hist = Array(6).fill(s.N); s.t = 0; s.rf = 0; };
+  s.reset = (c) => { s.N = c.tgt - 30; s.m = boost(s.N, c); s.th = 0; s.the = 0; s.v = 0; s.st = 0; s.rule = 5; s.hist = Array(6).fill(s.N); s.t = 0; s.rf = 0; s.rp = 0; };
   s.boost = boost;
   s.step = (c) => {
     s.m += DT / PLANT.taub * (boost(s.N, c) - s.m);
@@ -259,7 +294,9 @@ function makeSim(seed) {
     const meas = s.N + gauss() * PLANT.noise; s.hist.push(meas); s.hist.shift();
     const rate = s.hist[5] - s.hist[0]; s.rate = rate * 10;
     const err = meas - c.tgt; let fast = false; const k = c.look * 10; let u;
-    s.rf += 0.4 * (rate * 10 - s.rf);
+    const w = c.smooth > 0 ? Math.min(1, DT / c.smooth) : 1;
+    s.rp = w >= 1 ? rate : s.rp + w * (rate - s.rp);
+    s.rf += Math.min(0.4, w) * (rate * 10 - s.rf);
     if (c.ovsOn && meas + k * rate >= c.ovs) { s.st = 2; fast = true; s.rule = 1; }
     else if (c.pd) {
       let q = c.Kp * err + c.Kd * s.rf; if (Math.abs(q) < 0.5) q = 0; q = Math.max(-13, Math.min(28, q));
@@ -267,7 +304,7 @@ function makeSim(seed) {
     }
     else if (c.ovsOn && c.rule2 && meas >= c.ovs - c.margin && rate > -1) { s.st = 2; fast = true; s.rule = 2; }
     else {
-      const e = err + c.pred * 10 * rate;
+      const e = err + c.pred * 10 * s.rp;
       if (e <= -c.dnOn || (s.st === 1 && e < -c.dnOff)) { s.st = 1; s.rule = 3; }
       else if (e >= c.upOn || (s.st === 2 && e > c.upOff)) { s.st = 2; s.rule = 4; }
       else { s.st = 0; s.rule = 5; }
@@ -289,7 +326,14 @@ function cycleStats(rpm, st) {
   const cyc = pk.length >= 2;
   return { mean, max: mx, min: mn, over: over / n, fin: fin / n, co: co / n, hunting: cyc, peak: cyc ? med(pk) : mx, trough: cyc ? med(tr) : mn, swing: cyc ? med(pk) - med(tr) : mx - mn, period: cyc ? (up[up.length - 1] - up[0]) / (up.length - 1) * DT : NaN };
 }
-if (typeof module !== 'undefined') module.exports = { DT, PLANT, PRESETS, makeSim, cycleStats };
+function motorStats(st) {
+  const n = st.length; if (n < 2) return { starts: 0, rev: 0, run: 0 };
+  const dir = (v) => v === 0 ? 0 : (v === 1 ? -1 : 1);
+  let starts = 0, rev = 0, run = 0, last = 0;
+  for (let i = 0; i < n; i++) { const d = dir(st[i]); if (d !== 0) { run++; if (i > 0 && dir(st[i - 1]) !== d) starts++; if (last !== 0 && last !== d) rev++; last = d; } }
+  const min = n * DT / 60; return { starts: starts / min, rev: rev / min, run: run / n };
+}
+if (typeof module !== 'undefined') module.exports = { DT, PLANT, PRESETS, makeSim, cycleStats, motorStats };
 
 (function(){
 const $=id=>document.getElementById(id);
@@ -334,7 +378,7 @@ function f0(v){return Math.round(v).toLocaleString('en-US').replace(/,/g,'');}
 function mapRange(){let a=1e9,b=-1e9;for(const v of B.map){if(v<a)a=v;if(v>b)b=v;}return a.toFixed(1)+' to '+b.toFixed(1);}
 function stats(){const q=cycleStats(B.rpm.slice(-600),B.st.slice(-600));if(!q)return;const L=(preset==='custom'||mode!=='TO')?null:LOG[preset];
  const hunting=q.hunting&&q.swing>=60;if(!hunting){let a=1e9,b=-1e9;for(const v of B.rpm.slice(-200)){if(v<a)a=v;if(v>b)b=v;}q.swing=b-a;}$('verdict').textContent=hunting?'Hunting':'Steady';$('verdict').className='verdict '+(hunting?'h':'s');
- $('tSwing').textContent=f0(q.swing)+' rpm';$('tPer').textContent=hunting?q.period.toFixed(1)+' s':'none';$('tMean').textContent=f0(q.mean);$('tOver').textContent=Math.round(q.over*100)+'%';$('tMap').textContent=mapRange();
+ $('tSwing').textContent=f0(q.swing)+' rpm';$('tPer').textContent=hunting?q.period.toFixed(1)+' s':'none';$('tMean').textContent=f0(q.mean);$('tOver').textContent=Math.round(q.over*100)+'%';$('tMap').textContent=mapRange();{const ms=motorStats(B.st);$('tStarts').textContent=f0(ms.starts);$('tRun').textContent=Math.round(ms.run*100)+'%';$('rStarts').textContent=L?'Logged: pending':'Reversals: '+f0(ms.rev)+' /min';$('rRun').textContent='of the last '+Math.round(B.st.length*DT)+' s';}
  $('rV').textContent=L?'Logged: hunting':(preset!=='custom'&&mode==='CL'?'Logged: steady':'');$('rSwing').textContent=L?'Logged: '+L.swing:'';$('rPer').textContent=L?'Logged: '+L.period.toFixed(1)+' s':'';$('rMean').textContent=L?'Logged: '+L.mean:(Math.round(q.mean-c.tgt)>=0?'+':'')+Math.round(q.mean-c.tgt)+' vs target';$('rOver').textContent=L?'Logged: '+Math.round(L.over*100)+'%':'';$('rMap').textContent=L?'Logged: '+L.map:'';}
 function live(){$('bPe').style.width=Math.max(0,Math.min(100,(sim.pe-80)/40*100))+'%';$('bPp').style.width=Math.max(0,Math.min(100,(sim.pp-80)/40*100))+'%';$('nPe').textContent=sim.pe.toFixed(0)+'%';$('nPp').textContent=sim.pp.toFixed(0)+'%';
  $('lN').textContent=f0(sim.N);$('lR').textContent=(sim.rate>=0?'+':'')+f0(sim.rate);$('lM').textContent=sim.m.toFixed(1);$('lV').textContent=(sim.v>=0?'+':'')+sim.v.toFixed(1);
@@ -342,24 +386,24 @@ function live(){$('bPe').style.width=Math.max(0,Math.min(100,(sim.pe-80)/40*100)
 function draw(){drawRpm();drawDrive();drawSmall('cMap',B.map,42,51,[43,45,47,49,51]);let a=1e9,b=-1e9;for(const v of B.th){if(v<a)a=v;if(v>b)b=v;}const m=(a+b)/2,hs=Math.max(8,(b-a)/2+2);drawSmall('cPitch',B.th,m-hs,m+hs,[Math.round(m-hs/2),Math.round(m),Math.round(m+hs/2)]);drawBoost();live();}
 let frame=0;
 function loop(t){if(running){acc+=Math.min(100,t-last);let k=0;while(acc>=20&&k<10){sim.step(c);push();acc-=20;k++;}draw();if(++frame%15===0)stats();}last=t;requestAnimationFrame(loop);}
-const IN={tgt:['oTgt',v=>v],ovs:['oOvs',v=>v],margin:['oMargin',v=>v],look:['oLook',v=>(+v).toFixed(2)],vfast:['oVfast',v=>v],spd:['oSpd',v=>(+v).toFixed(2)],pred:['oPred',v=>+v>0?(+v).toFixed(2):'off'],Kp:['oKp',v=>(+v).toFixed(3)],Kd:['oKd',v=>(+v).toFixed(3)]};
-function show(){$('tgt').value=toRpm;$('db').value=dbPar;$('oDb').textContent=dbPar+' ⇒ ±'+c.dnOn+' rpm';$('mTO').setAttribute('aria-pressed',mode==='TO');$('mCL').setAttribute('aria-pressed',mode==='CL');$('ovs').value=c.ovs;$('margin').value=c.margin;$('look').value=c.look;$('vfast').value=c.vfast;$('spd').value=c.spd;$('pred').value=c.pred;$('Kp').value=c.Kp;$('Kd').value=c.Kd;$('x1').setAttribute('aria-pressed',!c.rule2);$('x2').setAttribute('aria-pressed',c.pred>0);$('x3').setAttribute('aria-pressed',c.pd);$('x1').parentNode.className=$('x2').parentNode.className='opt'+(c.pd?' na':'');$('pred').disabled=c.pd;$('Kp').disabled=$('Kd').disabled=!c.pd;{const on=[];if(c.pd)on.push('3');else{if(!c.rule2)on.push('1');if(c.pred>0)on.push('2');}$('propState').textContent=on.length?'Active: '+on.join(' and '):'None active';}$('ru3').children[1].textContent=(c.pred>0?'Predicted RPM':'RPM')+' below target minus deadband';$('ru4').children[1].textContent=(c.pred>0?'Predicted RPM':'RPM')+' above target plus deadband';$('ovsOn').checked=c.ovsOn;$('ramp').checked=c.ramp;for(const k in IN)$(IN[k][0]).textContent=IN[k][1]($(k).value);
+const IN={tgt:['oTgt',v=>v],ovs:['oOvs',v=>v],margin:['oMargin',v=>v],look:['oLook',v=>(+v).toFixed(2)],vfast:['oVfast',v=>v],spd:['oSpd',v=>(+v).toFixed(2)],pred:['oPred',v=>+v>0?(+v).toFixed(2):'off'],Kp:['oKp',v=>(+v).toFixed(3)],Kd:['oKd',v=>(+v).toFixed(3)],smooth:['oSmooth',v=>+v>0?(+v).toFixed(2)+' s':'off']};
+function show(){$('tgt').value=toRpm;$('db').value=dbPar;$('oDb').textContent=dbPar+' ⇒ ±'+c.dnOn+' rpm';$('mTO').setAttribute('aria-pressed',mode==='TO');$('mCL').setAttribute('aria-pressed',mode==='CL');$('ovs').value=c.ovs;$('margin').value=c.margin;$('look').value=c.look;$('vfast').value=c.vfast;$('spd').value=c.spd;$('pred').value=c.pred;$('Kp').value=c.Kp;$('Kd').value=c.Kd;$('smooth').value=c.smooth;$('x4').setAttribute('aria-pressed',c.smooth>0);$('opt4').className='opt'+((c.pd||c.pred>0)?'':' na');$('x1').setAttribute('aria-pressed',!c.rule2);$('x2').setAttribute('aria-pressed',c.pred>0);$('x3').setAttribute('aria-pressed',c.pd);$('x1').parentNode.className=$('x2').parentNode.className='opt'+(c.pd?' na':'');$('pred').disabled=c.pd;$('Kp').disabled=$('Kd').disabled=!c.pd;{const on=[];if(c.pd)on.push('3');else{if(!c.rule2)on.push('1');if(c.pred>0)on.push('2');}if(c.smooth>0&&(c.pd||c.pred>0))on.push('4');$('propState').textContent=on.length?'Active: '+on.join(', '):'None active';}$('ru3').children[1].textContent=(c.pred>0?'Predicted RPM':'RPM')+' below target minus deadband';$('ru4').children[1].textContent=(c.pred>0?'Predicted RPM':'RPM')+' above target plus deadband';$('ovsOn').checked=c.ovsOn;$('ramp').checked=c.ramp;for(const k in IN)$(IN[k][0]).textContent=IN[k][1]($(k).value);
  $('pOld').setAttribute('aria-pressed',basis==='old');$('pCur').setAttribute('aria-pressed',basis==='cur');$('custom').style.display=preset==='custom'?'':'none';['ovs','margin','look','vfast'].forEach(k=>$(k).disabled=!c.ovsOn);}
-function edited(){preset='custom';toRpm=+$('tgt').value;c.tgt=mode==='TO'?toRpm:5400;c.ovs=+$('ovs').value;c.margin=+$('margin').value;c.look=+$('look').value;c.vfast=+$('vfast').value;c.spd=+$('spd').value;c.pred=+$('pred').value;c.Kp=+$('Kp').value;c.Kd=+$('Kd').value;c.ovsOn=$('ovsOn').checked;c.ramp=$('ramp').checked;show();if(!running){draw();stats();}}
+function edited(){preset='custom';toRpm=+$('tgt').value;c.tgt=mode==='TO'?toRpm:5400;c.ovs=+$('ovs').value;c.margin=+$('margin').value;c.look=+$('look').value;c.vfast=+$('vfast').value;c.spd=+$('spd').value;c.pred=+$('pred').value;c.Kp=+$('Kp').value;c.Kd=+$('Kd').value;c.smooth=+$('smooth').value;c.ovsOn=$('ovsOn').checked;c.ramp=$('ramp').checked;show();if(!running){draw();stats();}}
 function setPreset(p){preset=p;basis=p;mode='TO';toRpm=5700;dbPar=60;c={...PRESETS[p]};show();restart();draw();stats();}
 function setMode(m){mode=m;c.tgt=m==='TO'?toRpm:5400;show();if(!running){draw();stats();}}
 function setDb(){dbPar=+$('db').value;const m=META[basis],on=Math.max(4,Math.round(dbPar*m.scale));c.upOn=on;c.dnOn=on;c.upOff=Math.max(2,on-m.hUp);c.dnOff=Math.max(2,on-m.hDn);preset='custom';show();if(!running){draw();stats();}}
-function validation(){const run=(p)=>{const acc={peak:0,trough:0,swing:0,mean:0,period:0,over:0};for(let s=1;s<=4;s++){const m=makeSim(s);m.reset(PRESETS[p]);const r=[],st=[];for(let i=0;i<3500;i++){m.step(PRESETS[p]);if(i>=500){r.push(m.N);st.push(m.st);}}const q=cycleStats(r,st);for(const k in acc)acc[k]+=q[k]/4;}return acc;};
- const o=run('old'),n=run('cur'),rows=[['Peak RPM','peak',f0],['Trough RPM','trough',f0],['Swing, rpm','swing',f0],['Average RPM','mean',f0],['Cycle time, s','period',v=>v.toFixed(1)],['Time above 5800','over',v=>Math.round(v*100)+'%']];
- $('val').tBodies[0].innerHTML=rows.map(r=>'<tr><td>'+r[0]+'</td><td>'+r[2](LOG.old[r[1]])+'</td><td>'+r[2](o[r[1]])+'</td><td>'+r[2](LOG.cur[r[1]])+'</td><td>'+r[2](n[r[1]])+'</td></tr>').join('');}
+function validation(){const run=(p)=>{const acc={peak:0,trough:0,swing:0,mean:0,period:0,over:0,starts:0};for(let s=1;s<=4;s++){const m=makeSim(s);m.reset(PRESETS[p]);const r=[],st=[];for(let i=0;i<3500;i++){m.step(PRESETS[p]);if(i>=500){r.push(m.N);st.push(m.st);}}const q=cycleStats(r,st);q.starts=motorStats(st).starts;for(const k in acc)acc[k]+=q[k]/4;}return acc;};
+ const o=run('old'),n=run('cur'),rows=[['Peak RPM','peak',f0],['Trough RPM','trough',f0],['Swing, rpm','swing',f0],['Average RPM','mean',f0],['Cycle time, s','period',v=>v.toFixed(1)],['Time above 5800','over',v=>Math.round(v*100)+'%'],['Pitch changes per minute','starts',f0]];
+ $('val').tBodies[0].innerHTML=rows.map(r=>'<tr><td>'+r[0]+'</td><td>'+(LOG.old[r[1]]==null?'pending':r[2](LOG.old[r[1]]))+'</td><td>'+r[2](o[r[1]])+'</td><td>'+(LOG.cur[r[1]]==null?'pending':r[2](LOG.cur[r[1]]))+'</td><td>'+r[2](n[r[1]])+'</td></tr>').join('');}
 buildRules();
 for(const k in IN)$(k).addEventListener('input',edited);
 $('db').addEventListener('input',setDb);$('mTO').addEventListener('click',()=>setMode('TO'));$('mCL').addEventListener('click',()=>setMode('CL'));
 $('ovsOn').addEventListener('change',edited);
 const tog=(f)=>()=>{f();preset='custom';show();if(!running){draw();stats();}};
-$('x1').addEventListener('click',tog(()=>{c.pd=false;c.rule2=!c.rule2;}));$('x2').addEventListener('click',tog(()=>{c.pd=false;c.pred=c.pred>0?0:0.8;}));$('x3').addEventListener('click',tog(()=>{c.pd=!c.pd;if(c.pd){c.rule2=true;c.pred=0;}}));$('ramp').addEventListener('change',edited);
+$('x1').addEventListener('click',tog(()=>{c.pd=false;c.rule2=!c.rule2;}));$('x2').addEventListener('click',tog(()=>{c.pd=false;c.pred=c.pred>0?0:0.8;}));$('x3').addEventListener('click',tog(()=>{c.pd=!c.pd;if(c.pd){c.rule2=true;c.pred=0;}}));$('x4').addEventListener('click',tog(()=>{c.smooth=c.smooth>0?0:0.15;}));$('ramp').addEventListener('change',edited);
 $('pOld').addEventListener('click',()=>setPreset('old'));$('pCur').addEventListener('click',()=>setPreset('cur'));
-$('restart').addEventListener('click',()=>{restart();draw();stats();});
+$('restart').addEventListener('click',()=>{restart();draw();stats();});$('resetAll').addEventListener('click',()=>setPreset(basis));
 $('bump').addEventListener('click',()=>{sim.N-=80;});
 $('pause').addEventListener('click',()=>{running=!running;$('pause').textContent=running?'Pause':'Run';});
 window.addEventListener('resize',()=>{if(!running)draw();});
