@@ -415,3 +415,53 @@ function drawDrive(){const [x,w,h]=prep($('cDrive')),L=38,cols=[null,css('--fine
 function drawSmall(id,arr,lo,hi,ticks,fmt){const [x,w,h]=prep($(id)),L=38,Y=v=>h-6-(v-lo)/(hi-lo)*(h-12),X=i=>L+(i+WIN-arr.length)/WIN*(w-L);axis(x,w,h,Y,ticks,L,fmt);trace(x,arr,X,Y,css('--ink'),1.6);}
 function drawBoost(){const [x,w,h]=prep($('cBoost')),L=30,Bm=18,lo=5300,hi=5900,X=v=>L+(v-lo)/(hi-lo)*(w-L-22),Y=v=>h-Bm-(v-42)/(51-42)*(h-Bm-8);
  x.strokeStyle=css('--line');x.fillStyle=css('--ink2');[43,45,47,49,51].forEach(t=>{x.beginPath();x.moveTo(L,Y(t));x.lineTo(w-22,Y(t));x.stroke();x.fillText(t,6,Y(t)+4);});
+ [5300,5400,5500,5600,5700,5800,5900].forEach(t=>{x.textAlign='center';x.fillText(t,X(t),h-4);});x.textAlign='left';
+ if(c.ramp){x.fillStyle=css('--ramp');x.fillRect(X(sim.P.r0),8,X(sim.P.r1)-X(sim.P.r0),h-Bm-8);}
+ x.strokeStyle=css('--accent');x.setLineDash([5,4]);x.beginPath();x.moveTo(X(c.tgt),8);x.lineTo(X(c.tgt),h-Bm);x.stroke();x.setLineDash([]);
+ if(c.ovsOn){x.strokeStyle=css('--fast');x.beginPath();x.moveTo(X(c.ovs),8);x.lineTo(X(c.ovs),h-Bm);x.stroke();}
+ x.strokeStyle=css('--ink2');x.lineWidth=2;x.beginPath();for(let v=lo;v<=hi;v+=5){const y=Y(sim.boost(v,c));v===lo?x.moveTo(X(v),y):x.lineTo(X(v),y);}x.stroke();
+ const n=B.rpm.length;x.strokeStyle=css('--accent');x.lineWidth=1;x.globalAlpha=.5;x.beginPath();for(let i=Math.max(0,n-200);i<n;i+=2){const px=X(Math.max(lo,Math.min(hi,B.rpm[i]))),py=Y(B.map[i]);i===Math.max(0,n-200)?x.moveTo(px,py):x.lineTo(px,py);}x.stroke();x.globalAlpha=1;
+ x.fillStyle=css('--accent');x.beginPath();x.arc(X(Math.max(lo,Math.min(hi,sim.N))),Y(sim.m),5.5,0,7);x.fill();x.strokeStyle=css('--panel');x.lineWidth=2;x.stroke();}
+function f0(v){return Math.round(v).toLocaleString('en-US').replace(/,/g,'');}
+function mapRange(){let a=1e9,b=-1e9;for(const v of B.map){if(v<a)a=v;if(v>b)b=v;}return a.toFixed(1)+' to '+b.toFixed(1);}
+function stats(){const q=cycleStats(B.rpm.slice(-600),B.st.slice(-600));if(!q)return;const L=(preset==='custom'||mode!=='TO')?null:LOG[preset];
+ const hunting=q.hunting&&q.swing>=60;if(!hunting){let a=1e9,b=-1e9;for(const v of B.rpm.slice(-200)){if(v<a)a=v;if(v>b)b=v;}q.swing=b-a;}$('verdict').textContent=hunting?'Hunting':'Steady';$('verdict').className='verdict '+(hunting?'h':'s');
+ $('tSwing').textContent=f0(q.swing)+' rpm';$('tPer').textContent=hunting?q.period.toFixed(1)+' s':'none';$('tMean').textContent=f0(q.mean);$('tOver').textContent=Math.round(q.over*100)+'%';$('tMap').textContent=mapRange();{const ms=motorStats(B.st);$('tStarts').textContent=f0(ms.starts);$('tRun').textContent=Math.round(ms.run*100)+'%';$('rStarts').textContent=L?'Logged: '+L.starts:'Reversals: '+f0(ms.rev)+' /min';$('rRun').textContent=L?'Logged: '+Math.round(L.run*100)+'%':'of the last '+Math.round(B.st.length*DT)+' s';}
+ $('rV').textContent=L?'Logged: hunting':(preset!=='custom'&&mode==='CL'?'Logged: steady':'');$('rSwing').textContent=L?'Logged: '+L.swing:'';$('rPer').textContent=L?'Logged: '+L.period.toFixed(1)+' s':'';$('rMean').textContent=L?'Logged: '+L.mean:(Math.round(q.mean-c.tgt)>=0?'+':'')+Math.round(q.mean-c.tgt)+' vs target';$('rOver').textContent=L?'Logged: '+Math.round(L.over*100)+'%':'';$('rMap').textContent=L?'Logged: '+L.map:'';}
+function live(){$('bPe').style.width=Math.max(0,Math.min(100,(sim.pe-80)/40*100))+'%';$('bPp').style.width=Math.max(0,Math.min(100,(sim.pp-80)/40*100))+'%';$('nPe').textContent=sim.pe.toFixed(0)+'%';$('nPp').textContent=sim.pp.toFixed(0)+'%';
+ $('lN').textContent=f0(sim.N);$('lR').textContent=(sim.rate>=0?'+':'')+f0(sim.rate);$('lM').textContent=sim.m.toFixed(1);$('lV').textContent=(sim.v>=0?'+':'')+sim.v.toFixed(1);
+ RULES.forEach(r=>{const el=$('ru'+r[0]),n=r[0];const off=(n<=2&&!c.ovsOn)||(n===2&&(!c.rule2||c.pd))||(n>=3&&n<=5&&c.pd)||(n===7&&!c.pd);el.className=(off?'off ':'')+(sim.rule===n?'on s'+(n===7?sim.st:r[3]):'');});}
+function draw(){drawRpm();drawDrive();drawSmall('cMap',B.map,42,51,[43,45,47,49,51]);let a=1e9,b=-1e9;for(const v of B.th){if(v<a)a=v;if(v>b)b=v;}const m=(a+b)/2,hs=Math.max(8,(b-a)/2+2);drawSmall('cPitch',B.th,m-hs,m+hs,[Math.round(m-hs/2),Math.round(m),Math.round(m+hs/2)]);drawBoost();live();}
+let frame=0;
+function loop(t){if(running){acc+=Math.min(100,t-last);let k=0;while(acc>=20&&k<10){sim.step(c);push();acc-=20;k++;}draw();if(++frame%15===0)stats();}last=t;requestAnimationFrame(loop);}
+const IN={tgt:['oTgt',v=>v],ovs:['oOvs',v=>v],margin:['oMargin',v=>v],look:['oLook',v=>(+v).toFixed(2)],vfast:['oVfast',v=>v],spd:['oSpd',v=>(+v).toFixed(2)],pred:['oPred',v=>+v>0?(+v).toFixed(2):'off'],Kp:['oKp',v=>(+v).toFixed(3)],Kd:['oKd',v=>(+v).toFixed(3)],smooth:['oSmooth',v=>+v>0?(+v).toFixed(2)+' s':'off']};
+function show(){$('pm1').setAttribute('aria-pressed',model==='m1');$('pm2').setAttribute('aria-pressed',model==='m2');$('rampCap').textContent=PLANTS[model].r0+' to '+PLANTS[model].r1;$('tgt').value=toRpm;$('db').value=dbPar;$('oDb').textContent=dbPar+' ⇒ ±'+c.dnOn+' rpm';$('mTO').setAttribute('aria-pressed',mode==='TO');$('mCL').setAttribute('aria-pressed',mode==='CL');$('ovs').value=c.ovs;$('margin').value=c.margin;$('look').value=c.look;$('vfast').value=c.vfast;$('spd').value=c.spd;$('pred').value=c.pred;$('Kp').value=c.Kp;$('Kd').value=c.Kd;$('smooth').value=c.smooth;$('x4').setAttribute('aria-pressed',c.smooth>0);$('opt4').className='opt'+((c.pd||c.pred>0)?'':' na');$('x1').setAttribute('aria-pressed',!c.rule2);$('x2').setAttribute('aria-pressed',c.pred>0);$('x3').setAttribute('aria-pressed',c.pd);$('x1').parentNode.className=$('x2').parentNode.className='opt'+(c.pd?' na':'');$('pred').disabled=c.pd;$('Kp').disabled=$('Kd').disabled=!c.pd;{const on=[];if(c.pd)on.push('3');else{if(!c.rule2)on.push('1');if(c.pred>0)on.push('2');}if(c.smooth>0&&(c.pd||c.pred>0))on.push('4');$('propState').textContent=on.length?'Active: '+on.join(', '):'None active';}$('ru3').children[1].textContent=(c.pred>0?'Predicted RPM':'RPM')+' below target minus deadband';$('ru4').children[1].textContent=(c.pred>0?'Predicted RPM':'RPM')+' above target plus deadband';$('ovsOn').checked=c.ovsOn;$('ramp').checked=c.ramp;for(const k in IN)$(IN[k][0]).textContent=IN[k][1]($(k).value);
+ $('pOld').setAttribute('aria-pressed',basis==='old');$('pCur').setAttribute('aria-pressed',basis==='cur');$('custom').style.display=preset==='custom'?'':'none';['ovs','margin','look','vfast'].forEach(k=>$(k).disabled=!c.ovsOn);}
+function edited(){preset='custom';toRpm=+$('tgt').value;c.tgt=mode==='TO'?toRpm:5400;c.ovs=+$('ovs').value;c.margin=+$('margin').value;c.look=+$('look').value;c.vfast=+$('vfast').value;c.spd=+$('spd').value;c.pred=+$('pred').value;c.Kp=+$('Kp').value;c.Kd=+$('Kd').value;c.smooth=+$('smooth').value;c.ovsOn=$('ovsOn').checked;c.ramp=$('ramp').checked;show();if(!running){draw();stats();}}
+function setPreset(p){preset=p;basis=p;mode='TO';toRpm=5700;dbPar=60;c={...PRESETS[p]};show();restart();draw();stats();}
+function setMode(m){mode=m;c.tgt=m==='TO'?toRpm:5400;show();if(!running){draw();stats();}}
+function setDb(){dbPar=+$('db').value;const m=META[basis],on=Math.max(4,Math.round(dbPar*m.scale));c.upOn=on;c.dnOn=on;c.upOff=Math.max(2,on-m.hUp);c.dnOff=Math.max(2,on-m.hDn);preset='custom';show();if(!running){draw();stats();}}
+function validation(){const run=(p)=>{const acc={peak:0,trough:0,swing:0,mean:0,period:0,over:0,starts:0,run:0};for(let s=1;s<=4;s++){const m=makeSim(s,PLANTS[model]);m.reset(PRESETS[p]);const r=[],st=[];for(let i=0;i<3500;i++){m.step(PRESETS[p]);if(i>=500){r.push(m.N);st.push(m.st);}}const q=cycleStats(r,st);{const ms=motorStats(st);q.starts=ms.starts;q.run=ms.run;}for(const k in acc)acc[k]+=q[k]/4;}return acc;};
+ const o=run('old'),n=run('cur'),rows=[['Peak RPM','peak',f0],['Trough RPM','trough',f0],['Swing, rpm','swing',f0],['Average RPM','mean',f0],['Cycle time, s','period',v=>v.toFixed(1)],['Time above 5800','over',v=>Math.round(v*100)+'%'],['Pitch changes per minute','starts',f0],['Pitch motor running','run',v=>Math.round(v*100)+'%']];
+ $('val').tBodies[0].innerHTML=rows.map(r=>'<tr><td>'+r[0]+'</td><td>'+(LOG.old[r[1]]==null?'pending':r[2](LOG.old[r[1]]))+'</td><td>'+r[2](o[r[1]])+'</td><td>'+(LOG.cur[r[1]]==null?'pending':r[2](LOG.cur[r[1]]))+'</td><td>'+r[2](n[r[1]])+'</td></tr>').join('');}
+buildRules();
+for(const k in IN)$(k).addEventListener('input',edited);
+$('db').addEventListener('input',setDb);$('mTO').addEventListener('click',()=>setMode('TO'));$('mCL').addEventListener('click',()=>setMode('CL'));
+$('ovsOn').addEventListener('change',edited);
+const tog=(f)=>()=>{f();preset='custom';show();if(!running){draw();stats();}};
+$('x1').addEventListener('click',tog(()=>{c.pd=false;c.rule2=!c.rule2;}));$('x2').addEventListener('click',tog(()=>{c.pd=false;c.pred=c.pred>0?0:0.8;}));$('x3').addEventListener('click',tog(()=>{c.pd=!c.pd;if(c.pd){c.rule2=true;c.pred=0;}}));$('x4').addEventListener('click',tog(()=>{c.smooth=c.smooth>0?0:0.15;}));$('ramp').addEventListener('change',edited);
+function setModel(m){model=m;show();restart();draw();stats();validation();}
+$('pm1').addEventListener('click',()=>setModel('m1'));$('pm2').addEventListener('click',()=>setModel('m2'));
+$('pOld').addEventListener('click',()=>setPreset('old'));$('pCur').addEventListener('click',()=>setPreset('cur'));
+$('restart').addEventListener('click',()=>{restart();draw();stats();});$('resetAll').addEventListener('click',()=>setPreset(basis));
+$('bump').addEventListener('click',()=>{sim.N-=80;});
+$('pause').addEventListener('click',()=>{running=!running;$('pause').textContent=running?'Pause':'Run';});
+window.addEventListener('resize',()=>{if(!running)draw();});
+new MutationObserver(()=>draw()).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+show();restart();draw();stats();validation();
+if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches){running=false;$('pause').textContent='Run';}
+requestAnimationFrame(t=>{last=t;loop(t);});
+})();
+</script>
+</body>
+</html>
