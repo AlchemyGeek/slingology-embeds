@@ -40,6 +40,10 @@ header p{margin:0;color:var(--ink2);max-width:70ch}
 .note{display:inline-block;margin-top:10px;padding:4px 10px;border:1px solid var(--line);border-radius:4px;font-size:13px;color:var(--ink2);background:var(--panel)}
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .bar .sp{flex:1}
+.seg button:not(:first-child):not(:last-child){border-radius:0;margin-left:-1px}
+.condl{font-size:13px;color:var(--ink2);display:inline-flex;gap:6px;align-items:center}
+select{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:4px;max-width:100%}
+select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .seg{display:inline-flex}.seg button:first-child{border-radius:4px 0 0 4px}.seg button:last-child{border-radius:0 4px 4px 0;margin-left:-1px}
 button{font:inherit;font-size:14px;padding:7px 12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:4px;cursor:pointer}
 button:hover{border-color:var(--accent)}
@@ -112,7 +116,7 @@ ul.plain li{margin-bottom:5px}
 <body>
 <div class="wrap">
 <header>
-  <h1>N117ZS governor hunting simulator <span class="ver">Version 2 &middot; 19 Nov 2026</span></h1>
+  <h1>N117ZS governor hunting simulator <span class="ver">Version 2.1 &middot; 20 Nov 2026</span></h1>
   <p>Rotax 916iS with Airmaster AP431 and AC300 controller, Takeoff mode at full throttle. The engine and propeller model is fitted to the aircraft's flight logs, and the governor rules are decoded from the controller's 50 Hz diagnostic log.</p>
   <span class="note">Governor logic is inferred from logs. It is not Airmaster firmware, and its predictions for untested settings need a flight test.</span>
   <p style="margin-top:8px;font-size:13px">Assumptions, method and results are set out in the accompanying paper. Changes in each version are listed at the foot of the page.</p>
@@ -123,7 +127,8 @@ ul.plain li{margin-bottom:5px}
   <button id="pCur" aria-pressed="true">Firmware 10.170 as flown</button>
   <span id="custom" class="note" style="margin:0;display:none">Modified settings</span>
   <span class="seg" role="group" aria-label="Controller mode"><button id="mTO" aria-pressed="true">Takeoff mode</button><button id="mCL" aria-pressed="false">Climb mode, 5400</button></span>
-  <span class="seg" role="group" aria-label="Engine and propeller model"><button id="pm1" aria-pressed="true">Engine model 1</button><button id="pm2" aria-pressed="false">Engine model 2</button></span>
+  <span class="seg" role="group" aria-label="Engine and propeller model"><button id="pm1" aria-pressed="true">Engine model 1</button><button id="pm2" aria-pressed="false">Engine model 2</button><button id="pm3" aria-pressed="false">Engine model 3</button></span>
+  <label class="condl" for="cond">Flight condition (model 3)<select id="cond"></select></label>
   <span class="sp"></span>
   <button id="bump">Disturb RPM by &minus;80</button>
   <button id="resetAll">Reset all settings</button>
@@ -157,6 +162,15 @@ ul.plain li{margin-bottom:5px}
       <div class="row"><label for="smooth">Smoothing time, s</label><output id="oSmooth"></output><input type="range" id="smooth" min="0" max="0.5" step="0.05"><small>The button sets 0.15 s. Zero switches it off. The overspeed look-ahead keeps the unsmoothed rate.</small></div>
     </div>
   </div>
+</details>
+
+<details class="panel" open>
+  <summary><span class="sh">The three engine and propeller models</span><span class="ss">Same governor rules in all three</span></summary>
+  <ul class="plain" style="margin-top:10px">
+    <li><b>Engine model 1: fitted as a whole.</b> The boost ramp, boost lag (0.49 s), rotating inertia (4.0 kg m2) and propeller load were all adjusted together until the simulated hunting matched the controller logs of both firmware versions. It matches those logs best near sea level. Its values are not measured one by one, so an error in one can be hidden by another.</li>
+    <li><b>Engine model 2: measured engine, Airmaster's figures.</b> The boost ramp and its 0.32 s lag come from the torque model (measured, and confirmed on the 20 Nov 2026 flight to 12,000 ft). Inertia (1.5 kg m2) and pitch motor timing are Airmaster's. Only the propeller terms and two delays were fitted. It fits the logs less closely and serves as a cross-check on model 1.</li>
+    <li><b>Engine model 3: model 2 with the propeller measured in flight.</b> Propeller load is taken from the 20 Nov 2026 flight as a function of RPM, blade pitch, air density and true airspeed (within 2% of logged power). Nothing was fitted to the hunting. It is the only model that responds to the flight condition selector: altitude, temperature, airspeed and throttle lever. It matches firmware 10.170 up to about 6,000 ft, gives too large a swing above that, and too large a swing on firmware 10.139.</li>
+  </ul>
 </details>
 
 <div class="tiles" aria-live="off">
@@ -241,9 +255,33 @@ ul.plain li{margin-bottom:5px}
       <li>Proposed change 1 removes the rule that takes away the upper deadband. Change 2 adds rate damping to the existing logic. Change 3 replaces the on/off deadband with a continuous drive. Rate of change is already computed by the firmware.</li>
       <li>Changes 2 and 3 act on rate of change, which is noisy. Without change 4 the model's pitch motor starts or reverses several hundred times a minute. The noise level (4 rpm per sample) is assumed, not measured, and the motor counts scale with it.</li>
       <li>Switching to Climb mode moves the target to 5400 rpm, below the ramp and clear of the overspeed zone. The hunting stops with the throttle untouched, as in flight.</li>
-      <li>Two engine and propeller models are offered. Results that hold in both are the ones to rely on: no parameter setting stops the hunting at takeoff power, change 1 cuts it, and changes 1, 2 and 4 together make it steady without working the pitch motor harder than today.</li>
-      <li>Fitted to two firmware versions near sea level. No altitude, temperature or airspeed effects, no ground roll, no throttle transients.</li>
+      <li>Three engine and propeller models are offered and described at the top of the page. Results that hold in all of them are the ones to rely on: no parameter setting stops the hunting at takeoff power, change 1 cuts it, and changes 1, 2 and 4 together make it steady without working the pitch motor harder than today.</li>
+      <li>Engine models 1 and 2 are fitted to two firmware versions near sea level and have no altitude, temperature or airspeed effects. Engine model 3 has them through the flight condition selector, but it does not reproduce the smaller swing logged above about 6,000 ft, so its altitude trend is not yet right. No ground roll and no throttle transients in any model.</li>
       <li>Pitch is in controller units. The decoded rules match the logged motor state on 96 to 97% of samples.</li>
+    </ul>
+  </section>
+  <section class="panel" style="grid-column:1/-1">
+    <h2>Changes in version 2.1 (20 Nov 2026), since version 2 (19 Nov 2026)</h2>
+    <ul class="plain" style="margin-bottom:12px">
+      <li><b>Engine model 3 and the flight condition selector.</b> Model 3 is model 2 with the propeller load measured on the 20 Nov 2026 test flight. The selector sets altitude, temperature, true airspeed and throttle lever to one of seven conditions flown that day, and the tiles show the logged figures for that condition. Choosing a condition switches to model 3.</li>
+      <li><b>Descriptions of the three models</b> at the top of the page.</li>
+    </ul>
+    <div class="tw"><table><thead><tr><th>Firmware 10.170, target 5700</th><th>Flight swing, rpm</th><th>Model 3 swing</th><th>Flight cycle, s</th><th>Model 3 cycle</th></tr></thead><tbody>
+      <tr><td>Takeoff, near sea level, 87 KTAS</td><td>191</td><td>186</td><td>2.6</td><td>2.6</td></tr>
+      <tr><td>3,000 ft climb, 95 KTAS</td><td>182</td><td>180</td><td>2.5</td><td>2.6</td></tr>
+      <tr><td>6,000 ft climb, 110 KTAS</td><td>150</td><td>166</td><td>2.4</td><td>2.5</td></tr>
+      <tr><td>9,000 ft climb, 103 KTAS</td><td>128</td><td>171</td><td>2.2</td><td>3.0</td></tr>
+      <tr><td>12,000 ft climb, 110 KTAS</td><td>126</td><td>175</td><td>2.1</td><td>3.2</td></tr>
+      <tr><td>5,800 ft level, 144 KTAS, throttle 100%</td><td>121</td><td>141</td><td>2.1</td><td>2.2</td></tr>
+      <tr><td>5,800 ft level, 147 KTAS, throttle 96%</td><td>117</td><td>163</td><td>2.1</td><td>2.3</td></tr>
+    </tbody></table></div>
+    <p style="font-size:13px;color:var(--ink2);margin:10px 0 12px;max-width:70ch">Means of 12 noise seeds, 60 s each. Flight figures are from the controller's 50 Hz record of 20 Nov 2026, with the same statistic as the model. At the takeoff condition models 1 and 2 give 188 and 157 rpm.</p>
+    <ul class="plain">
+      <li><b>What model 3 gets right.</b> With no value fitted to the hunting, it matches firmware 10.170 near sea level and at 3,000 ft, and it shows the smaller swing at higher airspeed. The measured propeller load rises with about the 3.6th power of RPM in the climb, the cube when static, and more steeply at high airspeed.</li>
+      <li><b>What it gets wrong.</b> Above about 6,000 ft the flight swing falls to 126 rpm and the cycle shortens; model 3 stays near 170 rpm and slows. At 96% throttle it keeps hunting, as flown, but too strongly. On firmware 10.139 it gives a swing of about 430 rpm at this flight's temperature and 260 to 300 at 25 C, against 218 logged. The cause of the altitude trend is not identified.</li>
+      <li><b>What still holds in all three models.</b> Firmware 10.170 hunts as flown. Climb at 5400 and a target of 5500 are steady. A target of 5600 with Dead Band 50 still hunts. Change 1 cuts the swing (94 rpm in model 3). Changes 1, 2 and 4 together are steady (64 rpm range, about 105 pitch changes a minute in model 3).</li>
+      <li><b>Engine model check.</b> On the 20 Nov flight the boost ramp and its 0.32 s lag predicted manifold pressure to 0.4 inHg rms from sea level to 12,000 ft. The throttle lever lowers the whole ramp: by 2.2, 2.8, 4.5 and 7.8 inHg at 99, 98, 97 and 96%, measured at 5,800 ft only.</li>
+      <li><b>Unchanged.</b> Engine models 1 and 2, the governor rules, the presets and proposed changes 1 to 4.</li>
     </ul>
   </section>
   <section class="panel" style="grid-column:1/-1">
@@ -318,7 +356,8 @@ ul.plain li{margin-bottom:5px}
 const DT = 0.02;
 const PLANTS = {
   m1: { J: 3.9962, kap: 0.021061, n: 4.04143, taub: 0.49466, tauth: 0.17754, P0: 105.438, lo: 43.15, hi: 50.0, r0: 5527, r1: 5765, noise: 4, dead: 0, tauM: 0, rdel: 0 },
-  m2: { J: 1.5, kap: 0.01153, n: 3.9762, taub: 0.32, tauth: 0.0284, P0: 105.7, lo: 43.11, hi: 50.5, r0: 5532, r1: 5799, noise: 4, dead: 0.10, tauM: 0.045, rdel: 0.08 }
+  m2: { J: 1.5, kap: 0.01153, n: 3.9762, taub: 0.32, tauth: 0.0284, P0: 105.7, lo: 43.11, hi: 50.5, r0: 5532, r1: 5799, noise: 4, dead: 0.10, tauM: 0.045, rdel: 0.08 },
+  m3: { J: 1.5, kap: 0.01153, n: 3.9762, taub: 0.32, tauth: 0.0284, P0: 105.7, lo: 43.11, hi: 50.5, r0: 5532, r1: 5799, noise: 4, dead: 0.10, tauM: 0.045, rdel: 0.08, prop: { th0: 230, b: [4.78014, 0.00885787, -0.533575, 0.0146331, -0.987734, -0.0000541967] } }
 };
 const PRESETS = {
   old: { tgt: 5700, upOn: 58, upOff: 53, dnOn: 57, dnOff: 45, ovsOn: false, ovs: 5800, look: 0.65, margin: 100, antf: 0, spd: 1, vfast: 28, tau: 0.08, ramp: true, rule2: true, pred: 0, pd: false, Kp: 0.031, Kd: 0.089, smooth: 0 },
@@ -330,14 +369,21 @@ function makeSim(seed, plant) {
   const rnd = mulberry(seed || 1);
   const gauss = () => { let u = 0, v = 0; while (u === 0) u = rnd(); v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
   const s = { N: 5670, m: 0, th: 0, the: 0, v: 0, st: 0, rule: 5, hist: [5670, 5670, 5670, 5670, 5670, 5670], pe: 0, pp: 0, rate: 0, t: 0, rf: 0, rp: 0, ub: [], nb: [], P: PLANT };
-  const boost = (x, c) => c.ramp ? PLANT.lo + (PLANT.hi - PLANT.lo) * Math.min(1, Math.max(0, (x - PLANT.r0) / (PLANT.r1 - PLANT.r0))) : 48.3;
-  s.reset = (c) => { s.N = c.tgt - 30; s.m = boost(s.N, c); s.th = 0; s.the = 0; s.v = 0; s.st = 0; s.rule = 5; s.hist = Array(6).fill(s.N); s.t = 0; s.rf = 0; s.rp = 0; s.ub = Array(Math.round(PLANT.dead / DT)).fill(0); s.nb = Array(Math.round(PLANT.rdel / DT)).fill(s.N); };
+  // Version 2.1: flight condition (env: h in 1000 ft, T in degC, tas in knots), throttle offset on MAP (off, inHg), measured propeller load (prop).
+  const ENV = PLANT.env || null, PR = PLANT.prop || null, off = PLANT.off || 0;
+  const sig = ENV ? Math.pow(1 - 6.8756e-6 * ENV.h * 1000, 5.2559) * 288.15 / (ENV.T + 273.15) : 1;
+  const dlo = ENV ? 0.208 * ENV.h + 0.100 * (ENV.T - 15) : 0, dpe = ENV ? -0.12332 * (ENV.T - 15) - 0.07334 * ENV.h : 0;
+  const lnCp = (th, N) => { const j = (ENV ? ENV.tas : 87) / N * 57 - 1, t = th - PR.th0, b = PR.b; return b[0] + b[1] * t + b[2] * j + b[3] * t * j + b[4] * j * j + b[5] * t * t; };
+  const load = (th, N) => PR ? sig * Math.pow(N / 5700, 3) * Math.exp(lnCp(th, N)) : PLANT.P0 * Math.pow(N / 5700, PLANT.n) * Math.exp(PLANT.kap * th);
+  const peng = (m, N) => 2.158 * m + 0.01209 * N - 66.38 + dpe;
+  const boost = (x, c) => c.ramp ? off + PLANT.lo + dlo + (Math.max(PLANT.hi, PLANT.lo + dlo) - PLANT.lo - dlo) * Math.min(1, Math.max(0, (x - PLANT.r0) / (PLANT.r1 - PLANT.r0))) : 48.3 + off;
+  s.reset = (c) => { s.N = c.tgt - 30; s.m = boost(s.N, c); s.th = 0; if (PR) { let a = 150, b = 330; for (let i = 0; i < 40; i++) { const mid = (a + b) / 2; if (load(mid, s.N) < peng(s.m, s.N)) a = mid; else b = mid; } s.th = (a + b) / 2 + 2; } s.the = s.th; s.v = 0; s.st = 0; s.rule = 5; s.hist = Array(6).fill(s.N); s.t = 0; s.rf = 0; s.rp = 0; s.ub = Array(Math.round(PLANT.dead / DT)).fill(0); s.nb = Array(Math.round(PLANT.rdel / DT)).fill(s.N); };
   s.boost = boost;
   s.step = (c) => {
     s.m += DT / PLANT.taub * (boost(s.N, c) - s.m);
-    s.pe = 2.158 * s.m + 0.01209 * s.N - 66.38;
+    s.pe = peng(s.m, s.N);
     s.the += DT / PLANT.tauth * (s.th - s.the);
-    s.pp = PLANT.P0 * Math.pow(s.N / 5700, PLANT.n) * Math.exp(PLANT.kap * s.the);
+    s.pp = load(s.the, s.N);
     s.N += DT * (618900 / PLANT.J) * (s.pe - s.pp) / s.N;
     s.nb.push(s.N); const meas = s.nb.shift() + gauss() * PLANT.noise; s.hist.push(meas); s.hist.shift();
     const rate = s.hist[5] - s.hist[0]; s.rate = rate * 10;
@@ -386,6 +432,16 @@ if (typeof module !== 'undefined') module.exports = { DT, PLANTS, PRESETS, makeS
 (function(){
 const $=id=>document.getElementById(id);
 const WIN=1000, LOG={old:{peak:5824,trough:5606,swing:218,mean:5697,period:3.74,over:.12,map:'43.1 to 50.1',starts:31,run:.51},cur:{peak:5734,trough:5540,swing:194,mean:5627,period:2.80,over:0,map:'43.7 to 49.5',starts:144,run:.76}};
+const COND=[
+ {n:'Takeoff, near sea level, 87 KTAS',h:0.4,T:5.6,tas:87,off:0,log:{swing:191,period:2.64,mean:5628,over:0,map:'42.8 to 47.6',starts:162,run:.74}},
+ {n:'3,000 ft climb, 95 KTAS',h:3.46,T:1.5,tas:95,off:0,log:{swing:182,period:2.53,mean:5623,over:0,map:'43.3 to 47.7',starts:193,run:.78}},
+ {n:'6,000 ft climb, 110 KTAS',h:6.33,T:-2.8,tas:110,off:0,log:{swing:150,period:2.44,mean:5634,over:0,map:'43.6 to 47.5',starts:150,run:.75}},
+ {n:'9,000 ft climb, 103 KTAS',h:9.15,T:-5.4,tas:103,off:0,log:{swing:128,period:2.19,mean:5648,over:0,map:'43.9 to 47.9',starts:114,run:.67}},
+ {n:'12,000 ft climb, 110 KTAS',h:11.85,T:-9.3,tas:110,off:0,log:{swing:126,period:2.07,mean:5652,over:0,map:'45.5 to 48.1',starts:133,run:.66}},
+ {n:'5,800 ft level, 144 KTAS, throttle 100%',h:5.85,T:-3.4,tas:144,off:0,log:{swing:121,period:2.08,mean:5657,over:0,map:'44.2 to 47.3',starts:122,run:.64}},
+ {n:'5,800 ft level, 147 KTAS, throttle 96%',h:5.83,T:-2.9,tas:147,off:-7.8,log:{swing:117,period:2.09,mean:5658,over:0,map:'35.8 to 39.2',starts:83,run:.59}}];
+let cond=0;
+function plant(){return model==='m3'?{...PLANTS.m3,env:COND[cond],off:COND[cond].off}:PLANTS[model];}
 let c={...PRESETS.cur}, preset='cur', basis='cur', mode='TO', toRpm=5700, dbPar=60, model='m1', sim=makeSim(7,PLANTS.m1), running=true, last=0, acc=0;
 const META={old:{scale:58/60,hUp:5,hDn:12},cur:{scale:46/60,hUp:2,hDn:2}};
 const B={rpm:[],map:[],th:[],st:[]};
@@ -398,7 +454,7 @@ const RULES=[
  [7,'Proportional drive: pitch rate = Kp × error + Kd × rate of change','Variable',0]];
 function buildRules(){ $('rules').innerHTML=RULES.map(r=>'<li id="ru'+r[0]+'" data-s="'+r[3]+'"><span class="n">'+(r[0]===7?'P':r[0])+'</span><span>'+r[1]+'</span><span class="a">'+r[2]+'</span></li>').join(''); }
 function push(){ B.rpm.push(sim.N);B.map.push(sim.m);B.th.push(sim.th);B.st.push(sim.st===2&&sim.rule<=2?3:sim.st); if(B.rpm.length>WIN){B.rpm.shift();B.map.shift();B.th.shift();B.st.shift();} }
-function restart(){ sim=makeSim(7,PLANTS[model]); sim.reset(c); B.rpm=[];B.map=[];B.th=[];B.st=[]; for(let i=0;i<1500;i++){sim.step(c); if(i>=500)push();} }
+function restart(){ sim=makeSim(7,plant()); sim.reset(c); B.rpm=[];B.map=[];B.th=[];B.st=[]; for(let i=0;i<1500;i++){sim.step(c); if(i>=500)push();} }
 function css(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
 function prep(cv){const r=window.devicePixelRatio||1,w=cv.clientWidth,h=+cv.dataset.h;if(cv.width!==Math.round(w*r)||cv.height!==Math.round(h*r)){cv.width=Math.round(w*r);cv.height=Math.round(h*r);cv.style.height=h+'px';}const x=cv.getContext('2d');x.setTransform(r,0,0,r,0,0);x.clearRect(0,0,w,h);x.font='11px '+css('--mono');return [x,w,h];}
 function trace(x,arr,X,Y,col,lw){x.strokeStyle=col;x.lineWidth=lw||1.6;x.beginPath();for(let i=0;i<arr.length;i+=2){const px=X(i),py=Y(arr[i]);i?x.lineTo(px,py):x.moveTo(px,py);}x.stroke();}
@@ -413,8 +469,8 @@ function drawRpm(){const [x,w,h]=prep($('cRpm')),L=38;let dmin=1e9;for(const v o
  trace(x,B.rpm,X,Y,css('--ink'),1.8);}
 function drawDrive(){const [x,w,h]=prep($('cDrive')),L=38,cols=[null,css('--fine'),css('--coarse'),css('--fast')];const n=B.st.length,bw=(w-L)/WIN;for(let i=0;i<n;i++){const s=B.st[i];if(s){x.fillStyle=cols[s];x.fillRect(L+(i+WIN-n)*bw,2,bw+.6,h-4);}}x.strokeStyle=css('--line');x.strokeRect(L+.5,1.5,w-L-1,h-3);}
 function drawSmall(id,arr,lo,hi,ticks,fmt){const [x,w,h]=prep($(id)),L=38,Y=v=>h-6-(v-lo)/(hi-lo)*(h-12),X=i=>L+(i+WIN-arr.length)/WIN*(w-L);axis(x,w,h,Y,ticks,L,fmt);trace(x,arr,X,Y,css('--ink'),1.6);}
-function drawBoost(){const [x,w,h]=prep($('cBoost')),L=30,Bm=18,lo=5300,hi=5900,X=v=>L+(v-lo)/(hi-lo)*(w-L-22),Y=v=>h-Bm-(v-42)/(51-42)*(h-Bm-8);
- x.strokeStyle=css('--line');x.fillStyle=css('--ink2');[43,45,47,49,51].forEach(t=>{x.beginPath();x.moveTo(L,Y(t));x.lineTo(w-22,Y(t));x.stroke();x.fillText(t,6,Y(t)+4);});
+function drawBoost(){const [x,w,h]=prep($('cBoost')),L=30,Bm=18,lo=5300,hi=5900,X=v=>L+(v-lo)/(hi-lo)*(w-L-22),mo=Math.round(sim.P.off||0),Y=v=>h-Bm-(v-42-mo)/(51-42)*(h-Bm-8);
+ x.strokeStyle=css('--line');x.fillStyle=css('--ink2');[43,45,47,49,51].map(v=>v+mo).forEach(t=>{x.beginPath();x.moveTo(L,Y(t));x.lineTo(w-22,Y(t));x.stroke();x.fillText(t,6,Y(t)+4);});
  [5300,5400,5500,5600,5700,5800,5900].forEach(t=>{x.textAlign='center';x.fillText(t,X(t),h-4);});x.textAlign='left';
  if(c.ramp){x.fillStyle=css('--ramp');x.fillRect(X(sim.P.r0),8,X(sim.P.r1)-X(sim.P.r0),h-Bm-8);}
  x.strokeStyle=css('--accent');x.setLineDash([5,4]);x.beginPath();x.moveTo(X(c.tgt),8);x.lineTo(X(c.tgt),h-Bm);x.stroke();x.setLineDash([]);
@@ -424,24 +480,24 @@ function drawBoost(){const [x,w,h]=prep($('cBoost')),L=30,Bm=18,lo=5300,hi=5900,
  x.fillStyle=css('--accent');x.beginPath();x.arc(X(Math.max(lo,Math.min(hi,sim.N))),Y(sim.m),5.5,0,7);x.fill();x.strokeStyle=css('--panel');x.lineWidth=2;x.stroke();}
 function f0(v){return Math.round(v).toLocaleString('en-US').replace(/,/g,'');}
 function mapRange(){let a=1e9,b=-1e9;for(const v of B.map){if(v<a)a=v;if(v>b)b=v;}return a.toFixed(1)+' to '+b.toFixed(1);}
-function stats(){const q=cycleStats(B.rpm.slice(-600),B.st.slice(-600));if(!q)return;const L=(preset==='custom'||mode!=='TO')?null:LOG[preset];
+function stats(){const q=cycleStats(B.rpm.slice(-600),B.st.slice(-600));if(!q)return;const L=(preset==='custom'||mode!=='TO')?null:(model==='m3'&&preset==='cur'?COND[cond].log:LOG[preset]);
  const hunting=q.hunting&&q.swing>=60;if(!hunting){let a=1e9,b=-1e9;for(const v of B.rpm.slice(-200)){if(v<a)a=v;if(v>b)b=v;}q.swing=b-a;}$('verdict').textContent=hunting?'Hunting':'Steady';$('verdict').className='verdict '+(hunting?'h':'s');
  $('tSwing').textContent=f0(q.swing)+' rpm';$('tPer').textContent=hunting?q.period.toFixed(1)+' s':'none';$('tMean').textContent=f0(q.mean);$('tOver').textContent=Math.round(q.over*100)+'%';$('tMap').textContent=mapRange();{const ms=motorStats(B.st);$('tStarts').textContent=f0(ms.starts);$('tRun').textContent=Math.round(ms.run*100)+'%';$('rStarts').textContent=L?'Logged: '+L.starts:'Reversals: '+f0(ms.rev)+' /min';$('rRun').textContent=L?'Logged: '+Math.round(L.run*100)+'%':'of the last '+Math.round(B.st.length*DT)+' s';}
  $('rV').textContent=L?'Logged: hunting':(preset!=='custom'&&mode==='CL'?'Logged: steady':'');$('rSwing').textContent=L?'Logged: '+L.swing:'';$('rPer').textContent=L?'Logged: '+L.period.toFixed(1)+' s':'';$('rMean').textContent=L?'Logged: '+L.mean:(Math.round(q.mean-c.tgt)>=0?'+':'')+Math.round(q.mean-c.tgt)+' vs target';$('rOver').textContent=L?'Logged: '+Math.round(L.over*100)+'%':'';$('rMap').textContent=L?'Logged: '+L.map:'';}
 function live(){$('bPe').style.width=Math.max(0,Math.min(100,(sim.pe-80)/40*100))+'%';$('bPp').style.width=Math.max(0,Math.min(100,(sim.pp-80)/40*100))+'%';$('nPe').textContent=sim.pe.toFixed(0)+'%';$('nPp').textContent=sim.pp.toFixed(0)+'%';
  $('lN').textContent=f0(sim.N);$('lR').textContent=(sim.rate>=0?'+':'')+f0(sim.rate);$('lM').textContent=sim.m.toFixed(1);$('lV').textContent=(sim.v>=0?'+':'')+sim.v.toFixed(1);
  RULES.forEach(r=>{const el=$('ru'+r[0]),n=r[0];const off=(n<=2&&!c.ovsOn)||(n===2&&(!c.rule2||c.pd))||(n>=3&&n<=5&&c.pd)||(n===7&&!c.pd);el.className=(off?'off ':'')+(sim.rule===n?'on s'+(n===7?sim.st:r[3]):'');});}
-function draw(){drawRpm();drawDrive();drawSmall('cMap',B.map,42,51,[43,45,47,49,51]);let a=1e9,b=-1e9;for(const v of B.th){if(v<a)a=v;if(v>b)b=v;}const m=(a+b)/2,hs=Math.max(8,(b-a)/2+2);drawSmall('cPitch',B.th,m-hs,m+hs,[Math.round(m-hs/2),Math.round(m),Math.round(m+hs/2)]);drawBoost();live();}
+function draw(){drawRpm();drawDrive();{const mo=Math.round(sim.P.off||0);drawSmall('cMap',B.map,42+mo,51+mo,[43,45,47,49,51].map(v=>v+mo));}let a=1e9,b=-1e9;for(const v of B.th){if(v<a)a=v;if(v>b)b=v;}const m=(a+b)/2,hs=Math.max(8,(b-a)/2+2);drawSmall('cPitch',B.th,m-hs,m+hs,[Math.round(m-hs/2),Math.round(m),Math.round(m+hs/2)]);drawBoost();live();}
 let frame=0;
 function loop(t){if(running){acc+=Math.min(100,t-last);let k=0;while(acc>=20&&k<10){sim.step(c);push();acc-=20;k++;}draw();if(++frame%15===0)stats();}last=t;requestAnimationFrame(loop);}
 const IN={tgt:['oTgt',v=>v],ovs:['oOvs',v=>v],margin:['oMargin',v=>v],look:['oLook',v=>(+v).toFixed(2)],vfast:['oVfast',v=>v],spd:['oSpd',v=>(+v).toFixed(2)],pred:['oPred',v=>+v>0?(+v).toFixed(2):'off'],Kp:['oKp',v=>(+v).toFixed(3)],Kd:['oKd',v=>(+v).toFixed(3)],smooth:['oSmooth',v=>+v>0?(+v).toFixed(2)+' s':'off']};
-function show(){$('pm1').setAttribute('aria-pressed',model==='m1');$('pm2').setAttribute('aria-pressed',model==='m2');$('rampCap').textContent=PLANTS[model].r0+' to '+PLANTS[model].r1;$('tgt').value=toRpm;$('db').value=dbPar;$('oDb').textContent=dbPar+' ⇒ ±'+c.dnOn+' rpm';$('mTO').setAttribute('aria-pressed',mode==='TO');$('mCL').setAttribute('aria-pressed',mode==='CL');$('ovs').value=c.ovs;$('margin').value=c.margin;$('look').value=c.look;$('vfast').value=c.vfast;$('spd').value=c.spd;$('pred').value=c.pred;$('Kp').value=c.Kp;$('Kd').value=c.Kd;$('smooth').value=c.smooth;$('x4').setAttribute('aria-pressed',c.smooth>0);$('opt4').className='opt'+((c.pd||c.pred>0)?'':' na');$('x1').setAttribute('aria-pressed',!c.rule2);$('x2').setAttribute('aria-pressed',c.pred>0);$('x3').setAttribute('aria-pressed',c.pd);$('x1').parentNode.className=$('x2').parentNode.className='opt'+(c.pd?' na':'');$('pred').disabled=c.pd;$('Kp').disabled=$('Kd').disabled=!c.pd;{const on=[];if(c.pd)on.push('3');else{if(!c.rule2)on.push('1');if(c.pred>0)on.push('2');}if(c.smooth>0&&(c.pd||c.pred>0))on.push('4');$('propState').textContent=on.length?'Active: '+on.join(', '):'None active';}$('ru3').children[1].textContent=(c.pred>0?'Predicted RPM':'RPM')+' below target minus deadband';$('ru4').children[1].textContent=(c.pred>0?'Predicted RPM':'RPM')+' above target plus deadband';$('ovsOn').checked=c.ovsOn;$('ramp').checked=c.ramp;for(const k in IN)$(IN[k][0]).textContent=IN[k][1]($(k).value);
+function show(){$('pm1').setAttribute('aria-pressed',model==='m1');$('pm2').setAttribute('aria-pressed',model==='m2');$('pm3').setAttribute('aria-pressed',model==='m3');$('cond').value=cond;$('rampCap').textContent=PLANTS[model].r0+' to '+PLANTS[model].r1;$('tgt').value=toRpm;$('db').value=dbPar;$('oDb').textContent=dbPar+' ⇒ ±'+c.dnOn+' rpm';$('mTO').setAttribute('aria-pressed',mode==='TO');$('mCL').setAttribute('aria-pressed',mode==='CL');$('ovs').value=c.ovs;$('margin').value=c.margin;$('look').value=c.look;$('vfast').value=c.vfast;$('spd').value=c.spd;$('pred').value=c.pred;$('Kp').value=c.Kp;$('Kd').value=c.Kd;$('smooth').value=c.smooth;$('x4').setAttribute('aria-pressed',c.smooth>0);$('opt4').className='opt'+((c.pd||c.pred>0)?'':' na');$('x1').setAttribute('aria-pressed',!c.rule2);$('x2').setAttribute('aria-pressed',c.pred>0);$('x3').setAttribute('aria-pressed',c.pd);$('x1').parentNode.className=$('x2').parentNode.className='opt'+(c.pd?' na':'');$('pred').disabled=c.pd;$('Kp').disabled=$('Kd').disabled=!c.pd;{const on=[];if(c.pd)on.push('3');else{if(!c.rule2)on.push('1');if(c.pred>0)on.push('2');}if(c.smooth>0&&(c.pd||c.pred>0))on.push('4');$('propState').textContent=on.length?'Active: '+on.join(', '):'None active';}$('ru3').children[1].textContent=(c.pred>0?'Predicted RPM':'RPM')+' below target minus deadband';$('ru4').children[1].textContent=(c.pred>0?'Predicted RPM':'RPM')+' above target plus deadband';$('ovsOn').checked=c.ovsOn;$('ramp').checked=c.ramp;for(const k in IN)$(IN[k][0]).textContent=IN[k][1]($(k).value);
  $('pOld').setAttribute('aria-pressed',basis==='old');$('pCur').setAttribute('aria-pressed',basis==='cur');$('custom').style.display=preset==='custom'?'':'none';['ovs','margin','look','vfast'].forEach(k=>$(k).disabled=!c.ovsOn);}
 function edited(){preset='custom';toRpm=+$('tgt').value;c.tgt=mode==='TO'?toRpm:5400;c.ovs=+$('ovs').value;c.margin=+$('margin').value;c.look=+$('look').value;c.vfast=+$('vfast').value;c.spd=+$('spd').value;c.pred=+$('pred').value;c.Kp=+$('Kp').value;c.Kd=+$('Kd').value;c.smooth=+$('smooth').value;c.ovsOn=$('ovsOn').checked;c.ramp=$('ramp').checked;show();if(!running){draw();stats();}}
 function setPreset(p){preset=p;basis=p;mode='TO';toRpm=5700;dbPar=60;c={...PRESETS[p]};show();restart();draw();stats();}
 function setMode(m){mode=m;c.tgt=m==='TO'?toRpm:5400;show();if(!running){draw();stats();}}
 function setDb(){dbPar=+$('db').value;const m=META[basis],on=Math.max(4,Math.round(dbPar*m.scale));c.upOn=on;c.dnOn=on;c.upOff=Math.max(2,on-m.hUp);c.dnOff=Math.max(2,on-m.hDn);preset='custom';show();if(!running){draw();stats();}}
-function validation(){const run=(p)=>{const acc={peak:0,trough:0,swing:0,mean:0,period:0,over:0,starts:0,run:0};for(let s=1;s<=4;s++){const m=makeSim(s,PLANTS[model]);m.reset(PRESETS[p]);const r=[],st=[];for(let i=0;i<3500;i++){m.step(PRESETS[p]);if(i>=500){r.push(m.N);st.push(m.st);}}const q=cycleStats(r,st);{const ms=motorStats(st);q.starts=ms.starts;q.run=ms.run;}for(const k in acc)acc[k]+=q[k]/4;}return acc;};
+function validation(){const run=(p)=>{const acc={peak:0,trough:0,swing:0,mean:0,period:0,over:0,starts:0,run:0};for(let s=1;s<=4;s++){const m=makeSim(s,plant());m.reset(PRESETS[p]);const r=[],st=[];for(let i=0;i<3500;i++){m.step(PRESETS[p]);if(i>=500){r.push(m.N);st.push(m.st);}}const q=cycleStats(r,st);{const ms=motorStats(st);q.starts=ms.starts;q.run=ms.run;}for(const k in acc)acc[k]+=q[k]/4;}return acc;};
  const o=run('old'),n=run('cur'),rows=[['Peak RPM','peak',f0],['Trough RPM','trough',f0],['Swing, rpm','swing',f0],['Average RPM','mean',f0],['Cycle time, s','period',v=>v.toFixed(1)],['Time above 5800','over',v=>Math.round(v*100)+'%'],['Pitch changes per minute','starts',f0],['Pitch motor running','run',v=>Math.round(v*100)+'%']];
  $('val').tBodies[0].innerHTML=rows.map(r=>'<tr><td>'+r[0]+'</td><td>'+(LOG.old[r[1]]==null?'pending':r[2](LOG.old[r[1]]))+'</td><td>'+r[2](o[r[1]])+'</td><td>'+(LOG.cur[r[1]]==null?'pending':r[2](LOG.cur[r[1]]))+'</td><td>'+r[2](n[r[1]])+'</td></tr>').join('');}
 buildRules();
@@ -451,7 +507,9 @@ $('ovsOn').addEventListener('change',edited);
 const tog=(f)=>()=>{f();preset='custom';show();if(!running){draw();stats();}};
 $('x1').addEventListener('click',tog(()=>{c.pd=false;c.rule2=!c.rule2;}));$('x2').addEventListener('click',tog(()=>{c.pd=false;c.pred=c.pred>0?0:0.8;}));$('x3').addEventListener('click',tog(()=>{c.pd=!c.pd;if(c.pd){c.rule2=true;c.pred=0;}}));$('x4').addEventListener('click',tog(()=>{c.smooth=c.smooth>0?0:0.15;}));$('ramp').addEventListener('change',edited);
 function setModel(m){model=m;show();restart();draw();stats();validation();}
-$('pm1').addEventListener('click',()=>setModel('m1'));$('pm2').addEventListener('click',()=>setModel('m2'));
+$('pm1').addEventListener('click',()=>setModel('m1'));$('pm2').addEventListener('click',()=>setModel('m2'));$('pm3').addEventListener('click',()=>setModel('m3'));
+$('cond').innerHTML=COND.map((q,i)=>'<option value="'+i+'">'+q.n+'</option>').join('');
+$('cond').addEventListener('change',()=>{cond=+$('cond').value;setModel('m3');});
 $('pOld').addEventListener('click',()=>setPreset('old'));$('pCur').addEventListener('click',()=>setPreset('cur'));
 $('restart').addEventListener('click',()=>{restart();draw();stats();});$('resetAll').addEventListener('click',()=>setPreset(basis));
 $('bump').addEventListener('click',()=>{sim.N-=80;});
